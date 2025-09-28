@@ -1,0 +1,202 @@
+<?php
+
+namespace Flux\Tests\Unit\Database;
+
+use Flux\Database\Adapters\MySQLAdapter;
+use Flux\Tests\TestCase;
+use Illuminate\Database\Connection;
+use Illuminate\Support\Facades\DB;
+use Mockery;
+
+class MySQLAdapterTest extends TestCase
+{
+    protected MySQLAdapter $adapter;
+    protected $mockConnection;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->mockConnection = Mockery::mock(Connection::class);
+        $this->mockConnection->shouldReceive('getDriverName')->andReturn('mysql');
+
+        DB::shouldReceive('connection')->with(null)->andReturn($this->mockConnection);
+
+        $this->adapter = new MySQLAdapter();
+    }
+
+    public function test_get_all_tables()
+    {
+        DB::shouldReceive('select')
+            ->once()
+            ->with("SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'")
+            ->andReturn([
+                (object)['TABLE_NAME' => 'users'],
+                (object)['TABLE_NAME' => 'posts'],
+            ]);
+
+        $tables = $this->adapter->getAllTables();
+
+        $this->assertEquals(['users', 'posts'], $tables);
+    }
+
+    public function test_get_table_columns()
+    {
+        DB::shouldReceive('select')
+            ->once()
+            ->with("SELECT COLUMN_NAME as name, DATA_TYPE as type, IS_NULLABLE as nullable, COLUMN_DEFAULT as default_value, EXTRA as extra FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ?", ['users'])
+            ->andReturn([
+                (object)[
+                    'name' => 'id',
+                    'type' => 'bigint',
+                    'nullable' => 'NO',
+                    'default_value' => null,
+                    'extra' => 'auto_increment',
+                ],
+                (object)[
+                    'name' => 'email',
+                    'type' => 'varchar',
+                    'nullable' => 'NO',
+                    'default_value' => null,
+                    'extra' => '',
+                ],
+            ]);
+
+        $columns = $this->adapter->getTableColumns('users');
+
+        $this->assertCount(2, $columns);
+        $this->assertEquals('id', $columns[0]['name']);
+        $this->assertEquals('bigint', $columns[0]['type']);
+        $this->assertEquals('NO', $columns[0]['nullable']);
+    }
+
+    public function test_get_table_indexes()
+    {
+        DB::shouldReceive('select')
+            ->once()
+            ->with("SELECT INDEX_NAME as name, GROUP_CONCAT(COLUMN_NAME) as columns, NON_UNIQUE as non_unique FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = ? GROUP BY INDEX_NAME, NON_UNIQUE", ['users'])
+            ->andReturn([
+                (object)[
+                    'name' => 'PRIMARY',
+                    'columns' => 'id',
+                    'non_unique' => 0,
+                ],
+                (object)[
+                    'name' => 'users_email_unique',
+                    'columns' => 'email',
+                    'non_unique' => 0,
+                ],
+            ]);
+
+        $indexes = $this->adapter->getTableIndexes('users');
+
+        $this->assertCount(2, $indexes);
+        $this->assertEquals('PRIMARY', $indexes[0]['name']);
+        $this->assertEquals('id', $indexes[0]['columns']);
+        $this->assertEquals(0, $indexes[0]['non_unique']);
+    }
+
+    public function test_get_table_row_count()
+    {
+        DB::shouldReceive('table')
+            ->with('users')
+            ->andReturnSelf();
+        DB::shouldReceive('count')
+            ->andReturn(42);
+
+        $count = $this->adapter->getTableRowCount('users');
+
+        $this->assertEquals(42, $count);
+    }
+
+    public function test_archive_table()
+    {
+        DB::shouldReceive('statement')
+            ->once()
+            ->with("RENAME TABLE `users` TO `archived_users`")
+            ->andReturn(true);
+
+        $result = $this->adapter->archiveTable('users', 'archived_users');
+
+        $this->assertTrue($result);
+    }
+
+    public function test_archive_column()
+    {
+        DB::shouldReceive('statement')
+            ->once()
+            ->with("ALTER TABLE `users` CHANGE COLUMN `email` `archived_email` VARCHAR(255)")
+            ->andReturn(true);
+
+        $result = $this->adapter->archiveColumn('users', 'email', 'archived_email', 'VARCHAR(255)');
+
+        $this->assertTrue($result);
+    }
+
+    public function test_backup_table()
+    {
+        // Mock table structure
+        DB::shouldReceive('select')
+            ->once()
+            ->with("SHOW CREATE TABLE `users`")
+            ->andReturn([
+                (object)['Create Table' => 'CREATE TABLE `users` (id INT)'],
+            ]);
+
+        // Mock table data
+        DB::shouldReceive('table')
+            ->with('users')
+            ->andReturnSelf();
+        DB::shouldReceive('get')
+            ->andReturn(collect([
+                (object)['id' => 1, 'name' => 'John'],
+                (object)['id' => 2, 'name' => 'Jane'],
+            ]));
+
+        $sql = $this->adapter->backupTable('users');
+
+        $this->assertStringContainsString('CREATE TABLE `users`', $sql);
+        $this->assertStringContainsString('INSERT INTO `users`', $sql);
+        $this->assertStringContainsString("'John'", $sql);
+        $this->assertStringContainsString("'Jane'", $sql);
+    }
+
+    public function test_supports_transactions()
+    {
+        $this->assertTrue($this->adapter->supportsTransactions());
+    }
+
+    public function test_get_quote_identifier()
+    {
+        $this->assertEquals('`', $this->adapter->getQuoteIdentifier());
+    }
+
+    public function test_quote_identifier()
+    {
+        $this->assertEquals('`users`', $this->adapter->quoteIdentifier('users'));
+        $this->assertEquals('`database`.`table`', $this->adapter->quoteIdentifier('database.table'));
+    }
+
+    public function test_generate_create_table_sql()
+    {
+        $columns = [
+            ['name' => 'id', 'type' => 'bigint', 'nullable' => false, 'auto_increment' => true],
+            ['name' => 'email', 'type' => 'varchar(255)', 'nullable' => false],
+            ['name' => 'created_at', 'type' => 'timestamp', 'nullable' => true],
+        ];
+
+        $indexes = [
+            ['type' => 'primary', 'columns' => ['id']],
+            ['type' => 'unique', 'name' => 'users_email_unique', 'columns' => ['email']],
+        ];
+
+        $sql = $this->adapter->generateCreateTableSQL('users', $columns, $indexes);
+
+        $this->assertStringContainsString('CREATE TABLE `users`', $sql);
+        $this->assertStringContainsString('`id` bigint NOT NULL AUTO_INCREMENT', $sql);
+        $this->assertStringContainsString('`email` varchar(255) NOT NULL', $sql);
+        $this->assertStringContainsString('`created_at` timestamp NULL', $sql);
+        $this->assertStringContainsString('PRIMARY KEY (`id`)', $sql);
+        $this->assertStringContainsString('UNIQUE KEY `users_email_unique` (`email`)', $sql);
+    }
+}

@@ -1,0 +1,295 @@
+<?php
+
+namespace Flux\Tests\Feature\Commands;
+
+use Flux\Tests\TestCase;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Mockery;
+
+class CheckCommandTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Create test tables for drift detection
+        $this->createTestTables();
+    }
+
+    protected function tearDown(): void
+    {
+        // Clean up test tables
+        Schema::dropIfExists('test_users');
+        Schema::dropIfExists('test_posts');
+
+        parent::tearDown();
+    }
+
+    protected function createTestTables()
+    {
+        Schema::create('test_users', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->timestamps();
+        });
+
+        Schema::create('test_posts', function ($table) {
+            $table->id();
+            $table->string('title');
+            $table->text('content');
+            $table->foreignId('user_id')->constrained('test_users');
+            $table->timestamps();
+        });
+    }
+
+    public function test_check_command_detects_no_drift()
+    {
+        // Mock the migration repository to return matching schema
+        $this->mockMigrationRepository([
+            'test_users' => [
+                'columns' => [
+                    ['name' => 'id', 'type' => 'bigint'],
+                    ['name' => 'name', 'type' => 'varchar'],
+                    ['name' => 'email', 'type' => 'varchar'],
+                    ['name' => 'created_at', 'type' => 'timestamp'],
+                    ['name' => 'updated_at', 'type' => 'timestamp'],
+                ],
+            ],
+            'test_posts' => [
+                'columns' => [
+                    ['name' => 'id', 'type' => 'bigint'],
+                    ['name' => 'title', 'type' => 'varchar'],
+                    ['name' => 'content', 'type' => 'text'],
+                    ['name' => 'user_id', 'type' => 'bigint'],
+                    ['name' => 'created_at', 'type' => 'timestamp'],
+                    ['name' => 'updated_at', 'type' => 'timestamp'],
+                ],
+            ],
+        ]);
+
+        $exitCode = Artisan::call('migrate:check');
+
+        $this->assertEquals(0, $exitCode);
+        $this->assertStringContainsString('No schema drift detected', Artisan::output());
+    }
+
+    public function test_check_command_detects_missing_table()
+    {
+        // Mock the migration repository with an extra table
+        $this->mockMigrationRepository([
+            'test_users' => [
+                'columns' => [
+                    ['name' => 'id', 'type' => 'bigint'],
+                    ['name' => 'name', 'type' => 'varchar'],
+                    ['name' => 'email', 'type' => 'varchar'],
+                    ['name' => 'created_at', 'type' => 'timestamp'],
+                    ['name' => 'updated_at', 'type' => 'timestamp'],
+                ],
+            ],
+            'test_posts' => [
+                'columns' => [
+                    ['name' => 'id', 'type' => 'bigint'],
+                    ['name' => 'title', 'type' => 'varchar'],
+                    ['name' => 'content', 'type' => 'text'],
+                    ['name' => 'user_id', 'type' => 'bigint'],
+                    ['name' => 'created_at', 'type' => 'timestamp'],
+                    ['name' => 'updated_at', 'type' => 'timestamp'],
+                ],
+            ],
+            'test_comments' => [ // This table doesn't exist
+                'columns' => [
+                    ['name' => 'id', 'type' => 'bigint'],
+                    ['name' => 'content', 'type' => 'text'],
+                ],
+            ],
+        ]);
+
+        $exitCode = Artisan::call('migrate:check');
+
+        $this->assertEquals(1, $exitCode);
+        $output = Artisan::output();
+        $this->assertStringContainsString('Schema drift detected', $output);
+        $this->assertStringContainsString('Missing Tables', $output);
+        $this->assertStringContainsString('test_comments', $output);
+    }
+
+    public function test_check_command_detects_extra_table()
+    {
+        // Create an extra table not in migrations
+        Schema::create('test_extra', function ($table) {
+            $table->id();
+            $table->string('data');
+        });
+
+        // Mock the migration repository without the extra table
+        $this->mockMigrationRepository([
+            'test_users' => [
+                'columns' => [
+                    ['name' => 'id', 'type' => 'bigint'],
+                    ['name' => 'name', 'type' => 'varchar'],
+                    ['name' => 'email', 'type' => 'varchar'],
+                    ['name' => 'created_at', 'type' => 'timestamp'],
+                    ['name' => 'updated_at', 'type' => 'timestamp'],
+                ],
+            ],
+            'test_posts' => [
+                'columns' => [
+                    ['name' => 'id', 'type' => 'bigint'],
+                    ['name' => 'title', 'type' => 'varchar'],
+                    ['name' => 'content', 'type' => 'text'],
+                    ['name' => 'user_id', 'type' => 'bigint'],
+                    ['name' => 'created_at', 'type' => 'timestamp'],
+                    ['name' => 'updated_at', 'type' => 'timestamp'],
+                ],
+            ],
+        ]);
+
+        $exitCode = Artisan::call('migrate:check');
+
+        $this->assertEquals(1, $exitCode);
+        $output = Artisan::output();
+        $this->assertStringContainsString('Schema drift detected', $output);
+        $this->assertStringContainsString('Extra Tables', $output);
+        $this->assertStringContainsString('test_extra', $output);
+
+        // Clean up
+        Schema::dropIfExists('test_extra');
+    }
+
+    public function test_check_command_detects_missing_column()
+    {
+        // Mock the migration repository with an extra column
+        $this->mockMigrationRepository([
+            'test_users' => [
+                'columns' => [
+                    ['name' => 'id', 'type' => 'bigint'],
+                    ['name' => 'name', 'type' => 'varchar'],
+                    ['name' => 'email', 'type' => 'varchar'],
+                    ['name' => 'phone', 'type' => 'varchar'], // This column doesn't exist
+                    ['name' => 'created_at', 'type' => 'timestamp'],
+                    ['name' => 'updated_at', 'type' => 'timestamp'],
+                ],
+            ],
+            'test_posts' => [
+                'columns' => [
+                    ['name' => 'id', 'type' => 'bigint'],
+                    ['name' => 'title', 'type' => 'varchar'],
+                    ['name' => 'content', 'type' => 'text'],
+                    ['name' => 'user_id', 'type' => 'bigint'],
+                    ['name' => 'created_at', 'type' => 'timestamp'],
+                    ['name' => 'updated_at', 'type' => 'timestamp'],
+                ],
+            ],
+        ]);
+
+        $exitCode = Artisan::call('migrate:check');
+
+        $this->assertEquals(1, $exitCode);
+        $output = Artisan::output();
+        $this->assertStringContainsString('Schema drift detected', $output);
+        $this->assertStringContainsString('Modified Tables', $output);
+        $this->assertStringContainsString('test_users', $output);
+        $this->assertStringContainsString('Missing columns: phone', $output);
+    }
+
+    public function test_check_command_with_fix_flag_generates_migration()
+    {
+        // Mock the migration repository with drift
+        $this->mockMigrationRepository([
+            'test_users' => [
+                'columns' => [
+                    ['name' => 'id', 'type' => 'bigint'],
+                    ['name' => 'name', 'type' => 'varchar'],
+                    ['name' => 'email', 'type' => 'varchar'],
+                    ['name' => 'phone', 'type' => 'varchar'], // Missing column
+                    ['name' => 'created_at', 'type' => 'timestamp'],
+                    ['name' => 'updated_at', 'type' => 'timestamp'],
+                ],
+            ],
+        ]);
+
+        $exitCode = Artisan::call('migrate:check', ['--fix' => true]);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Schema drift detected', $output);
+        $this->assertStringContainsString('Generated fix migration', $output);
+
+        // Check that a migration file was created
+        $migrationPath = database_path('migrations');
+        $files = glob($migrationPath . '/*fix_schema_drift*.php');
+        $this->assertNotEmpty($files, 'Fix migration file should be created');
+
+        // Clean up generated migration
+        foreach ($files as $file) {
+            unlink($file);
+        }
+    }
+
+    public function test_check_command_with_details_flag()
+    {
+        $exitCode = Artisan::call('migrate:check', ['--details' => true]);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Analyzing database schema', $output);
+        $this->assertStringContainsString('Current Database Schema', $output);
+    }
+
+    public function test_check_command_ignores_configured_tables()
+    {
+        // Configure tables to ignore
+        config(['smart-migration.drift.ignored_tables' => ['test_extra', 'migrations']]);
+
+        // Create an extra table that should be ignored
+        Schema::create('test_extra', function ($table) {
+            $table->id();
+            $table->string('data');
+        });
+
+        // Mock the migration repository
+        $this->mockMigrationRepository([
+            'test_users' => [
+                'columns' => [
+                    ['name' => 'id', 'type' => 'bigint'],
+                    ['name' => 'name', 'type' => 'varchar'],
+                    ['name' => 'email', 'type' => 'varchar'],
+                    ['name' => 'created_at', 'type' => 'timestamp'],
+                    ['name' => 'updated_at', 'type' => 'timestamp'],
+                ],
+            ],
+            'test_posts' => [
+                'columns' => [
+                    ['name' => 'id', 'type' => 'bigint'],
+                    ['name' => 'title', 'type' => 'varchar'],
+                    ['name' => 'content', 'type' => 'text'],
+                    ['name' => 'user_id', 'type' => 'bigint'],
+                    ['name' => 'created_at', 'type' => 'timestamp'],
+                    ['name' => 'updated_at', 'type' => 'timestamp'],
+                ],
+            ],
+        ]);
+
+        $exitCode = Artisan::call('migrate:check');
+
+        $this->assertEquals(0, $exitCode);
+        $output = Artisan::output();
+        $this->assertStringContainsString('No schema drift detected', $output);
+        $this->assertStringNotContainsString('test_extra', $output);
+
+        // Clean up
+        Schema::dropIfExists('test_extra');
+    }
+
+    protected function mockMigrationRepository(array $expectedSchema)
+    {
+        // This is a simplified mock - in reality, you'd need to properly mock
+        // the migration repository or create test migrations
+        $this->app->bind('migration.repository', function () use ($expectedSchema) {
+            $mock = Mockery::mock();
+            $mock->shouldReceive('getExpectedSchema')->andReturn($expectedSchema);
+            return $mock;
+        });
+    }
+}

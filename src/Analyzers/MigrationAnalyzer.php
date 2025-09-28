@@ -2,6 +2,9 @@
 
 namespace Flux\Analyzers;
 
+use Flux\Config\SmartMigrationConfig;
+use Flux\Database\DatabaseAdapter;
+use Flux\Database\DatabaseAdapterFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -153,6 +156,13 @@ class MigrationAnalyzer
     {
         $type = $operation['type'] ?? '';
 
+        // First check config for custom risk levels
+        $configRisk = SmartMigrationConfig::getOperationRisk($this->mapOperationType($type));
+        if ($configRisk) {
+            return $configRisk;
+        }
+
+        // Fall back to default assessment
         if (Str::startsWith($type, 'drop') || $type === 'drop_table') {
             return 'danger';
         }
@@ -162,6 +172,24 @@ class MigrationAnalyzer
         }
 
         return 'safe';
+    }
+
+    /**
+     * Map internal operation types to config operation types
+     */
+    protected function mapOperationType(string $type): string
+    {
+        return match($type) {
+            'create_table' => 'create_table',
+            'add_column' => 'add_column',
+            'dropColumn' => 'drop_column',
+            'drop_table' => 'drop_table',
+            'index' => 'add_index',
+            'dropIndex' => 'drop_index',
+            'change' => 'modify_column',
+            'renameColumn' => 'rename_column',
+            default => $type,
+        };
     }
 
     protected function generateSQL(array $operation): string

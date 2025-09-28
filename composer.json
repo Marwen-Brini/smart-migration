@@ -1,6 +1,6 @@
 {
     "name": "marwen-brini/smart-migration",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "Safe Laravel migrations with automatic backups, rollback protection, and migration impact analysis",
     "keywords": [
         "Marwen-Brini",

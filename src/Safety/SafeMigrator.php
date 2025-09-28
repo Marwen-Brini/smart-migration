@@ -2,6 +2,9 @@
 
 namespace Flux\Safety;
 
+use Flux\Config\SmartMigrationConfig;
+use Flux\Database\DatabaseAdapter;
+use Flux\Database\DatabaseAdapterFactory;
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -12,6 +15,28 @@ class SafeMigrator extends Migrator
     protected array $backupData = [];
 
     protected array $affectedTables = [];
+
+    protected ?DatabaseAdapter $adapter = null;
+
+    /**
+     * Get database adapter
+     */
+    protected function getAdapter(): DatabaseAdapter
+    {
+        if ($this->adapter === null) {
+            $this->adapter = DatabaseAdapterFactory::create();
+        }
+
+        return $this->adapter;
+    }
+
+    /**
+     * Public wrapper for pretendToRun method
+     */
+    public function pretendToRunMigration($migration, string $method): void
+    {
+        $this->pretendToRun($migration, $method);
+    }
 
     /**
      * Run migration with safety features
@@ -86,6 +111,11 @@ class SafeMigrator extends Migrator
      */
     protected function analyzeAndBackup(string $file): void
     {
+        // Skip backup if disabled in config
+        if (!SmartMigrationConfig::autoBackupEnabled()) {
+            return;
+        }
+
         $content = file_get_contents($file);
 
         // Find tables that will be affected
@@ -104,16 +134,14 @@ class SafeMigrator extends Migrator
      */
     protected function backupTable(string $table): void
     {
+        $adapter = $this->getAdapter();
         $this->write("<comment>📦 Backing up table:</comment> <info>{$table}</info>");
 
-        // Get table structure
-        $columns = DB::select("SHOW CREATE TABLE {$table}");
-
-        // Store structure
+        // Store structure and data using adapter
         $this->backupData[$table] = [
-            'structure' => $columns[0]->{'Create Table'} ?? '',
-            'data' => DB::table($table)->get()->toArray(),
-            'count' => DB::table($table)->count(),
+            'structure' => $adapter->getTableStructure($table),
+            'data' => $adapter->getTableData($table),
+            'count' => $adapter->getTableRowCount($table),
         ];
     }
 
@@ -130,7 +158,7 @@ class SafeMigrator extends Migrator
                 Schema::dropIfExists($table);
 
                 // Recreate table structure
-                DB::statement($backup['structure']);
+                $this->getAdapter()->execute($backup['structure']);
 
                 // Restore data
                 if (! empty($backup['data'])) {
@@ -150,8 +178,16 @@ class SafeMigrator extends Migrator
      */
     protected function safeRollback(string $file): void
     {
+        // Skip safe rollback if disabled in config
+        if (!SmartMigrationConfig::safeRollbackEnabled()) {
+            // Fall back to regular rollback
+            $migration = $this->resolveMigration($file);
+            $this->runMigration($migration, 'down');
+            return;
+        }
+
         $content = file_get_contents($file);
-        $timestamp = now()->format('Ymd_His');
+        $timestamp = SmartMigrationConfig::includeTimestampInArchive() ? now()->format('Ymd_His') : '';
 
         // Handle dropped columns by renaming instead
         preg_match_all('/\$table->dropColumn\([\'"](\w+)[\'"]/', $content, $dropColumns);
@@ -175,12 +211,15 @@ class SafeMigrator extends Migrator
      */
     protected function archiveColumn(string $table, string $column, string $timestamp): void
     {
-        if (Schema::hasColumn($table, $column)) {
-            $newName = "_archived_{$column}_{$timestamp}";
+        $adapter = $this->getAdapter();
+
+        if ($adapter->columnExists($table, $column)) {
+            $prefix = SmartMigrationConfig::getArchiveColumnPrefix();
+            $newName = $timestamp ? "{$prefix}{$column}_{$timestamp}" : "{$prefix}{$column}";
 
             $this->write("<comment>📦 Archiving column:</comment> <info>{$table}.{$column}</info> <comment>-></comment> <question>{$newName}</question>");
 
-            DB::statement("ALTER TABLE {$table} RENAME COLUMN {$column} TO {$newName}");
+            $adapter->archiveColumn($table, $column, $newName);
         }
     }
 
@@ -189,12 +228,15 @@ class SafeMigrator extends Migrator
      */
     protected function archiveTable(string $table, string $timestamp): void
     {
-        if (Schema::hasTable($table)) {
-            $newName = "_archived_{$table}_{$timestamp}";
+        $adapter = $this->getAdapter();
+
+        if ($adapter->tableExists($table)) {
+            $prefix = SmartMigrationConfig::getArchiveTablePrefix();
+            $newName = $timestamp ? "{$prefix}{$table}_{$timestamp}" : "{$prefix}{$table}";
 
             $this->write("<comment>📦 Archiving table:</comment> <info>{$table}</info> <comment>-></comment> <question>{$newName}</question>");
 
-            Schema::rename($table, $newName);
+            $adapter->archiveTable($table, $newName);
         }
     }
 
@@ -262,7 +304,7 @@ class SafeMigrator extends Migrator
      * Resolve a migration instance from a file
      * Handles both named classes and anonymous classes (Laravel 9+)
      */
-    protected function resolveMigration(string $file)
+    public function resolveMigration(string $file)
     {
         $migration = $this->files->getRequire($file);
 

@@ -47,7 +47,7 @@ class SafeCommand extends Command
 
         $this->displayMigrationPlan($files);
 
-        if (! $this->option('pretend') && ! $this->confirm('❓ <fg=cyan>Do you want to proceed with these migrations?</fg=cyan>')) {
+        if (! $this->option('pretend') && ! $this->option('force') && ! $this->confirm('❓ <fg=cyan>Do you want to proceed with these migrations?</fg=cyan>')) {
             $this->comment('❌ <fg=yellow>Migration cancelled by user</fg=yellow>');
 
             return self::FAILURE;
@@ -138,7 +138,8 @@ class SafeCommand extends Command
 
             if ($this->option('pretend')) {
                 $this->comment('📝 <fg=magenta>Simulating migration (pretend mode)...</fg=magenta>');
-                $this->migrator->pretendToRun($file, 'up');
+                $migration = $this->migrator->resolveMigration($file);
+                $this->migrator->pretendToRunMigration($migration, 'up');
             } else {
                 $this->comment('🔄 <fg=blue>Executing migration with safety protection...</fg=blue>');
                 $this->migrator->runSafe($file, $batch, false);

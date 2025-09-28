@@ -1,0 +1,198 @@
+<?php
+
+namespace Flux\Tests\Unit\Jobs;
+
+use Flux\Jobs\ArchiveCleanupJob;
+use Flux\Tests\TestCase;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+
+class ArchiveCleanupJobTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Enable auto cleanup for testing
+        config(['smart-migration.archive.auto_cleanup' => true]);
+        config(['smart-migration.archive.retention_days' => 7]);
+        config(['smart-migration.logging.enabled' => true]);
+    }
+
+    protected function tearDown(): void
+    {
+        // Clean up any test archived tables
+        $this->cleanupArchivedTables();
+
+        parent::tearDown();
+    }
+
+    protected function cleanupArchivedTables()
+    {
+        $tables = Schema::getConnection()->getDoctrineSchemaManager()->listTableNames();
+
+        foreach ($tables as $table) {
+            if (str_starts_with($table, 'archived_')) {
+                Schema::dropIfExists($table);
+            }
+        }
+    }
+
+    public function test_job_executes_cleanup_successfully()
+    {
+        // Create an old archived table
+        Schema::create('archived_test_table_20200101_120000', function ($table) {
+            $table->id();
+            $table->string('data');
+        });
+
+        // Mock the log to verify logging occurs
+        Log::shouldReceive('channel')
+            ->with('smart-migration')
+            ->andReturnSelf();
+
+        Log::shouldReceive('info')
+            ->once()
+            ->with('Scheduled archive cleanup completed', \Mockery::type('array'));
+
+        $job = new ArchiveCleanupJob();
+        $job->handle();
+
+        // Verify table was deleted
+        $this->assertFalse(Schema::hasTable('archived_test_table_20200101_120000'));
+    }
+
+    public function test_job_skips_when_auto_cleanup_disabled()
+    {
+        // Disable auto cleanup
+        config(['smart-migration.archive.auto_cleanup' => false]);
+
+        // Create an old archived table that should not be deleted
+        Schema::create('archived_test_table_20200101_120000', function ($table) {
+            $table->id();
+            $table->string('data');
+        });
+
+        $job = new ArchiveCleanupJob();
+        $job->handle();
+
+        // Verify table still exists
+        $this->assertTrue(Schema::hasTable('archived_test_table_20200101_120000'));
+    }
+
+    public function test_job_logs_error_on_failure()
+    {
+        // Enable logging
+        config(['smart-migration.logging.enabled' => true]);
+
+        // Mock the cleanup service to throw an exception
+        $this->app->bind(\Flux\Cleanup\ArchiveCleanupService::class, function () {
+            $mock = \Mockery::mock(\Flux\Cleanup\ArchiveCleanupService::class);
+            $mock->shouldReceive('cleanup')
+                ->andThrow(new \Exception('Test exception'));
+            return $mock;
+        });
+
+        // Mock the log to verify error logging
+        Log::shouldReceive('channel')
+            ->with('smart-migration')
+            ->andReturnSelf();
+
+        Log::shouldReceive('error')
+            ->once()
+            ->with('Archive cleanup failed', \Mockery::type('array'));
+
+        $job = new ArchiveCleanupJob();
+
+        // Expect the exception to be re-thrown
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('Test exception');
+
+        $job->handle();
+    }
+
+    public function test_job_sends_slack_notification()
+    {
+        // Enable notifications
+        config(['smart-migration.notifications.enabled' => true]);
+        config(['smart-migration.notifications.channels' => ['slack']]);
+        config(['smart-migration.notifications.events' => ['archive_cleanup']]);
+        config(['smart-migration.notifications.slack_webhook' => 'https://hooks.slack.com/test']);
+
+        // Create test archived table
+        Schema::create('archived_test_table_20200101_120000', function ($table) {
+            $table->id();
+        });
+
+        // Mock curl functions for Slack notification
+        $curlMock = \Mockery::mock('alias:curl_functions');
+        $curlMock->shouldReceive('curl_init')
+            ->with('https://hooks.slack.com/test')
+            ->andReturn('resource');
+        $curlMock->shouldReceive('curl_setopt')->times(4);
+        $curlMock->shouldReceive('curl_exec')->once();
+        $curlMock->shouldReceive('curl_close')->once();
+
+        // Mock log
+        Log::shouldReceive('channel')->andReturnSelf();
+        Log::shouldReceive('info')->once();
+
+        $job = new ArchiveCleanupJob();
+        $job->handle();
+    }
+
+    public function test_job_sends_webhook_notification()
+    {
+        // Enable notifications
+        config(['smart-migration.notifications.enabled' => true]);
+        config(['smart-migration.notifications.channels' => ['webhook']]);
+        config(['smart-migration.notifications.events' => ['archive_cleanup']]);
+        config(['smart-migration.notifications.webhook_url' => 'https://example.com/webhook']);
+
+        // Create test archived table
+        Schema::create('archived_test_table_20200101_120000', function ($table) {
+            $table->id();
+        });
+
+        // Mock curl functions for webhook notification
+        $curlMock = \Mockery::mock('alias:curl_functions');
+        $curlMock->shouldReceive('curl_init')
+            ->with('https://example.com/webhook')
+            ->andReturn('resource');
+        $curlMock->shouldReceive('curl_setopt')->times(4);
+        $curlMock->shouldReceive('curl_exec')->once();
+        $curlMock->shouldReceive('curl_close')->once();
+
+        // Mock log
+        Log::shouldReceive('channel')->andReturnSelf();
+        Log::shouldReceive('info')->once();
+
+        $job = new ArchiveCleanupJob();
+        $job->handle();
+    }
+
+    public function test_job_respects_notification_events_config()
+    {
+        // Enable notifications but exclude archive_cleanup event
+        config(['smart-migration.notifications.enabled' => true]);
+        config(['smart-migration.notifications.channels' => ['slack']]);
+        config(['smart-migration.notifications.events' => ['migration_failed']]);
+        config(['smart-migration.notifications.slack_webhook' => 'https://hooks.slack.com/test']);
+
+        // Create test archived table
+        Schema::create('archived_test_table_20200101_120000', function ($table) {
+            $table->id();
+        });
+
+        // Notifications should not be sent
+        $curlMock = \Mockery::mock('alias:curl_functions');
+        $curlMock->shouldNotReceive('curl_init');
+
+        // Mock log
+        Log::shouldReceive('channel')->andReturnSelf();
+        Log::shouldReceive('info')->once();
+
+        $job = new ArchiveCleanupJob();
+        $job->handle();
+    }
+}

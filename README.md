@@ -7,16 +7,24 @@
 
 **Never fear migrations again!** Smart Migration provides safety, visibility, and confidence when running Laravel migrations. Preview changes before they happen, automatically backup data, and rollback without data loss.
 
-> **🎯 POC Status**: v0.1.0 - Proof of Concept Complete! All three core commands (`migrate:plan`, `migrate:safe`, `migrate:undo`) are fully implemented and tested.
+> **🚀 Current Version**: v0.3.0 - MVP Release with PostgreSQL support, drift detection, snapshots, and auto-cleanup!
 
 ## ✨ Features
 
+### Core Safety Features
 - 🔍 **Preview migrations** - See exact SQL and impact before running
 - 🛡️ **Automatic backups** - Never lose data during migrations
 - ↩️ **Safe rollbacks** - Archive instead of dropping data
 - ⚠️ **Risk assessment** - Know which operations are dangerous
 - ⏱️ **Time estimation** - Understand how long migrations will take
-- 🎯 **Zero configuration** - Works out of the box
+
+### v0.3.0 New Features
+- 🐘 **PostgreSQL Support** - Full support for PostgreSQL databases
+- 🔎 **Drift Detection** - Detect schema differences between migrations and database
+- 📸 **Schema Snapshots** - Version control for your database schema
+- 🧹 **Auto-cleanup** - Automatic cleanup of old archived data
+- ⚙️ **Configuration System** - Comprehensive configuration options
+- 🔄 **Database Abstraction** - Support for MySQL, PostgreSQL, and SQLite
 
 ## Support us
 
@@ -29,8 +37,8 @@ We highly appreciate you sending us a postcard from your hometown, mentioning wh
 ## 📦 Requirements
 
 - PHP 8.3 or 8.4
-- Laravel 11.0 or 12.0
-- MySQL 5.7+ (PostgreSQL support coming in v0.2.0)
+- Laravel 11.0 or 12.0 (fully tested on both versions)
+- Database: MySQL 5.7+, PostgreSQL 10+, or SQLite 3.8+
 
 ## Installation
 
@@ -40,7 +48,7 @@ You can install the package via composer:
 composer require marwen-brini/smart-migration --dev
 ```
 
-> **Note**: This is a POC release (v0.1.0). Use in development environments only until v1.0.0 stable release.
+> **Note**: v0.3.0 is an MVP release. While stable for development use, exercise caution in production environments until v1.0.0 stable release.
 
 You can publish and run the migrations with:
 
@@ -153,7 +161,9 @@ Rolling back: 2025_01_15_000000_create_users_table
 
 ## 📘 Commands Reference
 
-### `migrate:plan`
+### Core Commands
+
+#### `migrate:plan`
 Preview exactly what a migration will do before running it.
 
 ```bash
@@ -164,7 +174,7 @@ php artisan migrate:plan
 php artisan migrate:plan 2025_01_15_000000_create_users_table
 ```
 
-### `migrate:safe`
+#### `migrate:safe`
 Run migrations with automatic backups and rollback on failure.
 
 ```bash
@@ -178,7 +188,7 @@ php artisan migrate:safe --force
 php artisan migrate:safe --pretend
 ```
 
-### `migrate:undo`
+#### `migrate:undo`
 Rollback migrations without data loss by archiving instead of dropping.
 
 ```bash
@@ -190,6 +200,67 @@ php artisan migrate:undo --step=3
 
 # Rollback specific batch
 php artisan migrate:undo --batch=5
+```
+
+### New v0.3.0 Commands
+
+#### `migrate:check`
+Detect schema drift between your migrations and database.
+
+```bash
+# Check for schema drift
+php artisan migrate:check
+
+# Show detailed comparison
+php artisan migrate:check --details
+
+# Auto-generate fix migration
+php artisan migrate:check --fix
+```
+
+#### `migrate:snapshot`
+Manage database schema snapshots for versioning.
+
+```bash
+# Create a snapshot
+php artisan migrate:snapshot create [name]
+
+# List all snapshots
+php artisan migrate:snapshot list
+
+# Show snapshot details
+php artisan migrate:snapshot show <name>
+
+# Compare two snapshots
+php artisan migrate:snapshot compare <snapshot1> --compare-with=<snapshot2>
+
+# Delete a snapshot
+php artisan migrate:snapshot delete <name>
+```
+
+#### `migrate:cleanup`
+Clean up old archived tables and columns.
+
+```bash
+# Clean up old archives
+php artisan migrate:cleanup
+
+# Preview cleanup without deleting
+php artisan migrate:cleanup --dry-run
+
+# Show archive statistics
+php artisan migrate:cleanup --stats
+```
+
+#### `migrate:config`
+Display current Smart Migration configuration.
+
+```bash
+# Show all configuration
+php artisan migrate:config
+
+# Show specific section
+php artisan migrate:config --section=safety
 ```
 
 ## Testing
@@ -225,20 +296,28 @@ Please review [our security policy](../../security/policy) on how to report secu
 - [x] Time estimation
 - [x] Full test coverage
 
-### 🚧 MVP (v0.2.0) - Next
-- [ ] `migrate:check` - Detect schema drift
-- [ ] `migrate:snapshot` - Save schema state
-- [ ] PostgreSQL support
-- [ ] Colored CLI output
-- [ ] Progress bars
-- [ ] Configuration file
+### ✅ MVP (v0.3.0) - Current Release!
+- [x] `migrate:check` - Detect schema drift
+- [x] `migrate:snapshot` - Save schema state
+- [x] `migrate:config` - Display configuration
+- [x] `migrate:cleanup` - Clean archived data
+- [x] PostgreSQL support
+- [x] SQLite support
+- [x] Database abstraction layer
+- [x] Configuration file system
+- [x] Auto-cleanup with scheduled jobs
+- [x] Comprehensive test coverage
+- [x] Laravel 11 & 12 compatibility
 
 ### 🔮 Future (v1.0.0+)
 - [ ] `migrate:diff` - Auto-generate migrations
 - [ ] Web dashboard
 - [ ] Team features
 - [ ] CI/CD integrations
-- [ ] Multi-database support
+- [ ] Cloud backup integration
+- [ ] Webhook notifications
+- [ ] Advanced rollback strategies
+- [ ] Migration performance profiling
 
 See the full [Development Roadmap](smart-migration-roadmap.md) for detailed plans.
 
