@@ -1,9 +1,5 @@
 <?php
 
-use Flux\Commands\PlanCommand;
-use Flux\Commands\SafeCommand;
-use Flux\Commands\UndoCommand;
-
 it('can register plan command', function () {
     $this->artisan('migrate:plan', ['--help' => true])
         ->assertSuccessful()
@@ -25,11 +21,11 @@ it('can register undo command', function () {
 it('plan command shows analysis', function () {
     // Create a test migration file
     $migrationPath = database_path('migrations');
-    if (!is_dir($migrationPath)) {
+    if (! is_dir($migrationPath)) {
         mkdir($migrationPath, 0755, true);
     }
 
-    $testMigration = $migrationPath . '/2025_01_01_000000_test_migration.php';
+    $testMigration = $migrationPath.'/2025_01_01_000000_test_migration.php';
     file_put_contents($testMigration, '<?php
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;

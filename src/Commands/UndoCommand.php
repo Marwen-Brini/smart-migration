@@ -2,10 +2,10 @@
 
 namespace Flux\Commands;
 
+use Flux\Safety\SafeMigrator;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Flux\Safety\SafeMigrator;
 
 class UndoCommand extends Command
 {
@@ -21,7 +21,7 @@ class UndoCommand extends Command
 
     public function handle(): int
     {
-        if (!$this->confirmToProceed()) {
+        if (! $this->confirmToProceed()) {
             return self::FAILURE;
         }
 
@@ -38,26 +38,28 @@ class UndoCommand extends Command
         if (empty($migrations)) {
             $this->info('✅ <fg=green>Nothing to rollback - no recent migrations found!</fg=green>');
             $this->newLine();
+
             return self::SUCCESS;
         }
 
         $this->displayRollbackPlan($migrations);
 
-        if (!$this->option('pretend') && !$this->confirm('❓ <fg=cyan>Do you want to proceed with this safe rollback?</fg=cyan>')) {
+        if (! $this->option('pretend') && ! $this->confirm('❓ <fg=cyan>Do you want to proceed with this safe rollback?</fg=cyan>')) {
             $this->comment('❌ <fg=yellow>Rollback cancelled by user</fg=yellow>');
+
             return self::FAILURE;
         }
 
         $totalMigrations = count($migrations);
 
         // Use progress bar for multiple rollbacks
-        if ($totalMigrations > 1 && !$this->option('pretend')) {
+        if ($totalMigrations > 1 && ! $this->option('pretend')) {
             $this->newLine();
-            $this->info('🚀 <fg=cyan>Rolling back ' . $totalMigrations . ' migrations...</fg=cyan>');
+            $this->info('🚀 <fg=cyan>Rolling back '.$totalMigrations.' migrations...</fg=cyan>');
             $this->newLine();
 
             $bar = $this->output->createProgressBar($totalMigrations);
-            $bar->setFormat(" <fg=cyan>%current%/%max%</> [<fg=yellow>%bar%</>] <fg=gray>%percent:3s%%</> <fg=blue>%message%</>");
+            $bar->setFormat(' <fg=cyan>%current%/%max%</> [<fg=yellow>%bar%</>] <fg=gray>%percent:3s%%</> <fg=blue>%message%</>');
             $bar->setMessage('Initializing rollbacks...');
             $bar->start();
 
@@ -70,7 +72,7 @@ class UndoCommand extends Command
                 } catch (\Exception $e) {
                     $bar->finish();
                     $this->newLine(2);
-                    $this->error("❌ <fg=red>Rollback failed:</fg=red> " . $e->getMessage());
+                    $this->error('❌ <fg=red>Rollback failed:</fg=red> '.$e->getMessage());
                     throw $e;
                 }
             }
@@ -93,10 +95,11 @@ class UndoCommand extends Command
 
     protected function rollbackMigration(object $migration): void
     {
-        $file = $this->getMigrationPath() . '/' . $migration->migration . '.php';
+        $file = $this->getMigrationPath().'/'.$migration->migration.'.php';
 
-        if (!file_exists($file)) {
+        if (! file_exists($file)) {
             $this->error("❌ <fg=red>Migration file not found:</fg=red> {$migration->migration}");
+
             return;
         }
 
@@ -123,7 +126,7 @@ class UndoCommand extends Command
             }
 
         } catch (\Exception $e) {
-            $this->error("❌ <fg=red>Rollback failed:</fg=red> " . $e->getMessage());
+            $this->error('❌ <fg=red>Rollback failed:</fg=red> '.$e->getMessage());
             throw $e;
         }
     }
@@ -135,26 +138,27 @@ class UndoCommand extends Command
         $this->newLine();
 
         foreach ($migrations as $index => $migration) {
-            $file = $this->getMigrationPath() . '/' . $migration->migration . '.php';
+            $file = $this->getMigrationPath().'/'.$migration->migration.'.php';
 
-            if (!file_exists($file)) {
-                $this->warn(sprintf("%d. ⚠️  <fg=yellow>%s - File not found</fg=yellow>", $index + 1, $migration->migration));
+            if (! file_exists($file)) {
+                $this->warn(sprintf('%d. ⚠️  <fg=yellow>%s - File not found</fg=yellow>', $index + 1, $migration->migration));
+
                 continue;
             }
 
-            $this->comment(sprintf("%d. 📄 <fg=cyan>%s</fg=cyan>", $index + 1, $migration->migration));
+            $this->comment(sprintf('%d. 📄 <fg=cyan>%s</fg=cyan>', $index + 1, $migration->migration));
 
             // Check what will be archived
             $archiveInfo = $this->getArchiveInfo($file);
 
-            if (!empty($archiveInfo['tables'])) {
+            if (! empty($archiveInfo['tables'])) {
                 foreach ($archiveInfo['tables'] as $table) {
                     $count = $this->getTableRowCount($table);
                     $this->line("     📦 Table '<fg=red>{$table}</fg=red>' will be archived (<fg=yellow>{$count}</fg=yellow> rows)");
                 }
             }
 
-            if (!empty($archiveInfo['columns'])) {
+            if (! empty($archiveInfo['columns'])) {
                 foreach ($archiveInfo['columns'] as $item) {
                     $count = $this->getColumnDataCount($item['table'], $item['column']);
                     $this->line("     📦 Column '<fg=red>{$item['table']}.{$item['column']}</fg=red>' will be archived (<fg=yellow>{$count}</fg=yellow> non-null values)");
@@ -162,7 +166,7 @@ class UndoCommand extends Command
             }
 
             if (empty($archiveInfo['tables']) && empty($archiveInfo['columns'])) {
-                $this->line("     ✅ <fg=green>No destructive operations - safe to rollback</fg=green>");
+                $this->line('     ✅ <fg=green>No destructive operations - safe to rollback</fg=green>');
             }
 
             if ($index < count($migrations) - 1) {
@@ -210,9 +214,9 @@ class UndoCommand extends Command
      */
     protected function rollbackMigrationQuiet(object $migration): void
     {
-        $file = $this->getMigrationPath() . '/' . $migration->migration . '.php';
+        $file = $this->getMigrationPath().'/'.$migration->migration.'.php';
 
-        if (!file_exists($file)) {
+        if (! file_exists($file)) {
             throw new \RuntimeException("Migration file not found: {$migration->migration}");
         }
 
@@ -228,7 +232,7 @@ class UndoCommand extends Command
         $timestamp = now()->format('Ymd_His');
         $archiveInfo = $this->getArchiveInfo($file);
 
-        if (!empty($archiveInfo['tables']) || !empty($archiveInfo['columns'])) {
+        if (! empty($archiveInfo['tables']) || ! empty($archiveInfo['columns'])) {
             $this->newLine();
             $this->info('📦 <options=bold>Archived items</options=bold> <fg=blue>(preserved with timestamp {$timestamp}):</fg=blue>');
 
@@ -280,7 +284,8 @@ class UndoCommand extends Command
             return $repository->getMigrations($batch);
         }
 
-        $steps = (int)$this->option('step');
+        $steps = (int) $this->option('step');
+
         return $repository->getLast($steps);
     }
 

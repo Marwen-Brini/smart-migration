@@ -2,10 +2,10 @@
 
 namespace Flux\Commands;
 
+use Flux\Analyzers\MigrationAnalyzer;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use Flux\Analyzers\MigrationAnalyzer;
 
 class PlanCommand extends Command
 {
@@ -21,7 +21,7 @@ class PlanCommand extends Command
     public function __construct()
     {
         parent::__construct();
-        $this->analyzer = new MigrationAnalyzer();
+        $this->analyzer = new MigrationAnalyzer;
     }
 
     public function handle(): int
@@ -36,10 +36,11 @@ class PlanCommand extends Command
         if (empty($migrations)) {
             $this->warn('⚠️  No pending migrations found.');
             $this->newLine();
+
             return self::SUCCESS;
         }
 
-        $this->info('📋 Found ' . count($migrations) . ' migration(s) to analyze:');
+        $this->info('📋 Found '.count($migrations).' migration(s) to analyze:');
         $this->newLine();
 
         foreach ($migrations as $migration) {
@@ -59,20 +60,22 @@ class PlanCommand extends Command
         $path = $this->getMigrationPath();
 
         if ($migrationName) {
-            $file = $path . '/' . $migrationName . '.php';
-            if (!File::exists($file)) {
+            $file = $path.'/'.$migrationName.'.php';
+            if (! File::exists($file)) {
                 $this->error("❌ Migration file not found: <fg=red>{$migrationName}</fg=red>");
+
                 return [];
             }
+
             return [$file];
         }
 
-        $files = File::glob($path . '/*.php');
+        $files = File::glob($path.'/*.php');
         $pending = [];
 
         foreach ($files as $file) {
             $name = $this->getMigrationName($file);
-            if (!$this->isMigrationRun($name)) {
+            if (! $this->isMigrationRun($name)) {
                 $pending[] = $file;
             }
         }
@@ -102,7 +105,7 @@ class PlanCommand extends Command
             $this->displaySummary($analysis);
 
         } catch (\Exception $e) {
-            $this->error("❌ <fg=red>Failed to analyze migration:</fg=red> " . $e->getMessage());
+            $this->error('❌ <fg=red>Failed to analyze migration:</fg=red> '.$e->getMessage());
         }
     }
 
@@ -114,15 +117,15 @@ class PlanCommand extends Command
 
         $this->line("   {$icon} <{$riskColor}>{$risk}</{$riskColor}> │ {$operation['description']}");
 
-        if (!empty($operation['sql'])) {
+        if (! empty($operation['sql'])) {
             $this->line("             │ <fg=gray>SQL:</fg=gray> <fg=blue>{$operation['sql']}</fg=blue>");
         }
 
-        if (!empty($operation['impact'])) {
+        if (! empty($operation['impact'])) {
             $this->line("             │ <fg=gray>Impact:</fg=gray> {$operation['impact']}");
         }
 
-        if (!empty($operation['duration'])) {
+        if (! empty($operation['duration'])) {
             $this->line("             │ <fg=gray>Duration:</fg=gray> <fg=magenta>{$operation['duration']}</fg=magenta>");
         }
 
@@ -135,20 +138,20 @@ class PlanCommand extends Command
         $this->comment('│                                                                              │');
 
         if ($analysis['summary']['safe'] > 0) {
-            $this->comment("│   ✅ <fg=green>{$analysis['summary']['safe']} safe operation(s)</fg=green>" . str_repeat(' ', 50 - strlen($analysis['summary']['safe'])) . "│");
+            $this->comment("│   ✅ <fg=green>{$analysis['summary']['safe']} safe operation(s)</fg=green>".str_repeat(' ', 50 - strlen($analysis['summary']['safe'])).'│');
         }
 
         if ($analysis['summary']['warnings'] > 0) {
-            $this->comment("│   ⚠️  <fg=yellow>{$analysis['summary']['warnings']} warning(s)</fg=yellow>" . str_repeat(' ', 52 - strlen($analysis['summary']['warnings'])) . "│");
+            $this->comment("│   ⚠️  <fg=yellow>{$analysis['summary']['warnings']} warning(s)</fg=yellow>".str_repeat(' ', 52 - strlen($analysis['summary']['warnings'])).'│');
         }
 
         if ($analysis['summary']['dangerous'] > 0) {
-            $this->comment("│   🔴 <fg=red>{$analysis['summary']['dangerous']} dangerous operation(s)</fg=red>" . str_repeat(' ', 44 - strlen($analysis['summary']['dangerous'])) . "│");
+            $this->comment("│   🔴 <fg=red>{$analysis['summary']['dangerous']} dangerous operation(s)</fg=red>".str_repeat(' ', 44 - strlen($analysis['summary']['dangerous'])).'│');
         }
 
-        if (!empty($analysis['estimated_time'])) {
+        if (! empty($analysis['estimated_time'])) {
             $timeStr = "Estimated total time: {$analysis['estimated_time']}";
-            $this->comment("│   ⏱️  <fg=magenta>{$timeStr}</fg=magenta>" . str_repeat(' ', 60 - strlen($timeStr)) . "│");
+            $this->comment("│   ⏱️  <fg=magenta>{$timeStr}</fg=magenta>".str_repeat(' ', 60 - strlen($timeStr)).'│');
         }
 
         $this->comment('│                                                                              │');
@@ -189,7 +192,7 @@ class PlanCommand extends Command
     protected function getMigrationPath(): string
     {
         if ($this->option('path')) {
-            return $this->laravel->basePath() . '/' . $this->option('path');
+            return $this->laravel->basePath().'/'.$this->option('path');
         }
 
         return database_path('migrations');

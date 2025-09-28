@@ -11,12 +11,12 @@ class MigrationAnalyzer
     protected array $dangerousOperations = [
         'drop', 'dropIfExists', 'dropColumn', 'dropForeign',
         'dropPrimary', 'dropUnique', 'dropIndex', 'dropSpatialIndex',
-        'dropTimestamps', 'dropSoftDeletes', 'dropRememberToken'
+        'dropTimestamps', 'dropSoftDeletes', 'dropRememberToken',
     ];
 
     protected array $warningOperations = [
         'rename', 'renameColumn', 'change', 'index', 'unique',
-        'spatialIndex', 'foreign', 'primary'
+        'spatialIndex', 'foreign', 'primary',
     ];
 
     public function analyze(string $migrationFile): array
@@ -65,7 +65,7 @@ class MigrationAnalyzer
             $operations[] = ['type' => 'create_table', 'table' => $table];
 
             // Parse columns within create
-            $pattern = "/Schema::create\(['\"]" . preg_quote($table) . "['\"],.*?function.*?\(.*?\).*?\{(.*?)\}\);/s";
+            $pattern = "/Schema::create\(['\"]".preg_quote($table)."['\"],.*?function.*?\(.*?\).*?\{(.*?)\}\);/s";
             if (preg_match($pattern, $content, $tableMatch)) {
                 $tableContent = $tableMatch[1];
                 $operations = array_merge($operations, $this->parseTableOperations($tableContent, $table));
@@ -75,7 +75,7 @@ class MigrationAnalyzer
         // Parse Schema::table
         preg_match_all('/Schema::table\([\'"](\w+)[\'"]/', $content, $tables);
         foreach ($tables[1] as $table) {
-            $pattern = "/Schema::table\(['\"]" . preg_quote($table) . "['\"],.*?function.*?\(.*?\).*?\{(.*?)\}\);/s";
+            $pattern = "/Schema::table\(['\"]".preg_quote($table)."['\"],.*?function.*?\(.*?\).*?\{(.*?)\}\);/s";
             if (preg_match($pattern, $content, $tableMatch)) {
                 $tableContent = $tableMatch[1];
                 $operations = array_merge($operations, $this->parseTableOperations($tableContent, $table));
@@ -118,7 +118,7 @@ class MigrationAnalyzer
                     'table' => $table,
                     'column' => $columnName,
                 ];
-            } elseif (!in_array($type, ['nullable', 'default', 'unsigned', 'comment'])) {
+            } elseif (! in_array($type, ['nullable', 'default', 'unsigned', 'comment'])) {
                 $operations[] = [
                     'type' => 'add_column',
                     'table' => $table,
@@ -216,13 +216,14 @@ class MigrationAnalyzer
                 };
             } catch (\Exception $e) {
                 if ($type === 'create_table') {
-                    return "New table will be created";
+                    return 'New table will be created';
                 }
-                return "Table not found (will be created)";
+
+                return 'Table not found (will be created)';
             }
         }
 
-        return "Unknown impact";
+        return 'Unknown impact';
     }
 
     protected function estimateDuration(array $operation): array
@@ -261,11 +262,11 @@ class MigrationAnalyzer
     protected function formatDuration(float $ms): string
     {
         if ($ms < 1000) {
-            return "~" . round($ms) . "ms";
+            return '~'.round($ms).'ms';
         } elseif ($ms < 60000) {
-            return "~" . round($ms / 1000, 1) . "s";
+            return '~'.round($ms / 1000, 1).'s';
         } else {
-            return "~" . round($ms / 60000, 1) . "min";
+            return '~'.round($ms / 60000, 1).'min';
         }
     }
 

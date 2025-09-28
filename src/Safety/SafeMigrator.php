@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 class SafeMigrator extends Migrator
 {
     protected array $backupData = [];
+
     protected array $affectedTables = [];
 
     /**
@@ -24,6 +25,7 @@ class SafeMigrator extends Migrator
 
         if ($pretend) {
             $this->pretendToRun($migration, 'up');
+
             return;
         }
 
@@ -67,7 +69,7 @@ class SafeMigrator extends Migrator
             $this->safeRollback($file);
 
             // Remove from migration log
-            $this->repository->delete((object)['migration' => $name]);
+            $this->repository->delete((object) ['migration' => $name]);
 
             $this->write("<info>✅ Rolled back (SAFE):</info> <comment>{$name}</comment>");
 
@@ -131,7 +133,7 @@ class SafeMigrator extends Migrator
                 DB::statement($backup['structure']);
 
                 // Restore data
-                if (!empty($backup['data'])) {
+                if (! empty($backup['data'])) {
                     DB::table($table)->insert($backup['data']);
                 }
 
@@ -154,7 +156,7 @@ class SafeMigrator extends Migrator
         // Handle dropped columns by renaming instead
         preg_match_all('/\$table->dropColumn\([\'"](\w+)[\'"]/', $content, $dropColumns);
         foreach ($dropColumns[1] as $column) {
-            preg_match('/Schema::table\([\'"](\w+)[\'"].*?' . preg_quote($column) . '/s', $content, $tableMatch);
+            preg_match('/Schema::table\([\'"](\w+)[\'"].*?'.preg_quote($column).'/s', $content, $tableMatch);
             if (isset($tableMatch[1])) {
                 $table = $tableMatch[1];
                 $this->archiveColumn($table, $column, $timestamp);
@@ -236,7 +238,7 @@ class SafeMigrator extends Migrator
         // Check for column drops
         preg_match_all('/\$table->dropColumn\([\'"](\w+)[\'"]/', $content, $dropColumns);
         foreach ($dropColumns[1] as $column) {
-            preg_match('/Schema::table\([\'"](\w+)[\'"].*?' . preg_quote($column) . '/s', $content, $tableMatch);
+            preg_match('/Schema::table\([\'"](\w+)[\'"].*?'.preg_quote($column).'/s', $content, $tableMatch);
             if (isset($tableMatch[1])) {
                 $table = $tableMatch[1];
                 if (Schema::hasTable($table) && Schema::hasColumn($table, $column)) {
