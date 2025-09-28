@@ -5,6 +5,9 @@ namespace Flux;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Flux\Commands\FluxCommand;
+use Flux\Commands\PlanCommand;
+use Flux\Commands\SafeCommand;
+use Flux\Commands\UndoCommand;
 
 class FluxServiceProvider extends PackageServiceProvider
 {
@@ -20,6 +23,9 @@ class FluxServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasViews()
             ->hasMigration('create_smart_migration_table')
-            ->hasCommand(FluxCommand::class);
+            ->hasCommand(FluxCommand::class)
+            ->hasCommand(PlanCommand::class)
+            ->hasCommand(SafeCommand::class)
+            ->hasCommand(UndoCommand::class);
     }
 }

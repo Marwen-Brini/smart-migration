@@ -1,10 +1,16 @@
 {
     "name": "marwen-brini/smart-migration",
-    "description": "This is my package smart-migration",
+    "version": "0.2.0",
+    "description": "Safe Laravel migrations with automatic backups, rollback protection, and migration impact analysis",
     "keywords": [
         "Marwen-Brini",
         "laravel",
-        "smart-migration"
+        "smart-migration",
+        "database",
+        "migrations",
+        "safety",
+        "rollback",
+        "backup"
     ],
     "homepage": "https://github.com/marwen-brini/smart-migration",
     "license": "MIT",
