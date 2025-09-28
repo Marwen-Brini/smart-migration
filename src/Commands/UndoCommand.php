@@ -44,7 +44,7 @@ class UndoCommand extends Command
 
         $this->displayRollbackPlan($migrations);
 
-        if (! $this->option('pretend') && ! $this->confirm('❓ <fg=cyan>Do you want to proceed with this safe rollback?</fg=cyan>')) {
+        if (! $this->option('pretend') && ! $this->option('force') && ! $this->confirm('❓ <fg=cyan>Do you want to proceed with this safe rollback?</fg=cyan>')) {
             $this->comment('❌ <fg=yellow>Rollback cancelled by user</fg=yellow>');
 
             return self::FAILURE;

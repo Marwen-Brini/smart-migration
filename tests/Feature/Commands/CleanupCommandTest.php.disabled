@@ -1,0 +1,243 @@
+<?php
+
+namespace Flux\Tests\Feature\Commands;
+
+use Flux\Cleanup\ArchiveCleanupService;
+use Flux\Tests\TestCase;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schema;
+
+class CleanupCommandTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Enable auto cleanup for testing
+        config(['smart-migration.archive.auto_cleanup' => true]);
+        config(['smart-migration.archive.retention_days' => 7]);
+    }
+
+    protected function tearDown(): void
+    {
+        // Clean up any test archived tables
+        $this->cleanupArchivedTables();
+
+        parent::tearDown();
+    }
+
+    protected function cleanupArchivedTables()
+    {
+        $tables = Schema::getConnection()->getDoctrineSchemaManager()->listTableNames();
+
+        foreach ($tables as $table) {
+            if (str_starts_with($table, 'archived_')) {
+                Schema::dropIfExists($table);
+            }
+        }
+    }
+
+    public function test_cleanup_command_with_no_archived_data()
+    {
+        $exitCode = Artisan::call('migrate:cleanup');
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Smart Migration - Archive Cleanup', $output);
+        $this->assertStringContainsString('No archived data older than retention period found', $output);
+    }
+
+    public function test_cleanup_command_with_dry_run()
+    {
+        // Create an old archived table
+        $this->createOldArchivedTable();
+
+        $exitCode = Artisan::call('migrate:cleanup', ['--dry-run' => true]);
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('DRY RUN MODE', $output);
+        $this->assertStringContainsString('archived_test_users_20200101_120000', $output);
+        $this->assertStringContainsString('Run without --dry-run to perform the actual cleanup', $output);
+
+        // Verify table still exists
+        $this->assertTrue(Schema::hasTable('archived_test_users_20200101_120000'));
+    }
+
+    public function test_cleanup_command_deletes_old_tables()
+    {
+        // Create an old archived table
+        $this->createOldArchivedTable();
+
+        // Verify table exists before cleanup
+        $this->assertTrue(Schema::hasTable('archived_test_users_20200101_120000'));
+
+        $exitCode = Artisan::call('migrate:cleanup');
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('archived_test_users_20200101_120000', $output);
+        $this->assertStringContainsString('Cleanup completed successfully', $output);
+
+        // Verify table was deleted
+        $this->assertFalse(Schema::hasTable('archived_test_users_20200101_120000'));
+    }
+
+    public function test_cleanup_command_keeps_recent_tables()
+    {
+        // Create a recent archived table (within retention period)
+        $this->createRecentArchivedTable();
+
+        $exitCode = Artisan::call('migrate:cleanup');
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('No archived data older than retention period found', $output);
+
+        // Verify table still exists
+        $recentDate = now()->format('Ymd_His');
+        $this->assertTrue(Schema::hasTable("archived_test_posts_{$recentDate}"));
+    }
+
+    public function test_cleanup_command_with_disabled_auto_cleanup()
+    {
+        // Disable auto cleanup
+        config(['smart-migration.archive.auto_cleanup' => false]);
+
+        $exitCode = Artisan::call('migrate:cleanup');
+
+        $this->assertEquals(1, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Auto cleanup is disabled in configuration', $output);
+    }
+
+    public function test_cleanup_command_with_forever_retention()
+    {
+        // Set retention to keep forever
+        config(['smart-migration.archive.retention_days' => 0]);
+
+        $exitCode = Artisan::call('migrate:cleanup');
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Archive retention is set to keep forever', $output);
+    }
+
+    public function test_cleanup_command_with_stats_flag()
+    {
+        // Create some archived tables
+        $this->createOldArchivedTable();
+        $this->createRecentArchivedTable();
+
+        $exitCode = Artisan::call('migrate:cleanup', ['--stats' => true]);
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Archive Statistics', $output);
+        $this->assertStringContainsString('Configuration:', $output);
+        $this->assertStringContainsString('Auto Cleanup:', $output);
+        $this->assertStringContainsString('Retention Days:', $output);
+        $this->assertStringContainsString('Archived Tables:', $output);
+        $this->assertStringContainsString('Summary:', $output);
+        $this->assertStringContainsString('Total Archived Tables:', $output);
+    }
+
+    public function test_cleanup_command_cleans_archived_columns()
+    {
+        // Create a table with an archived column
+        Schema::create('test_table', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('archived_email_20200101_120000')->nullable();
+        });
+
+        $exitCode = Artisan::call('migrate:cleanup');
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Archived Columns to Clean', $output);
+        $this->assertStringContainsString('test_table', $output);
+        $this->assertStringContainsString('archived_email_20200101_120000', $output);
+
+        // Verify column was removed
+        $this->assertFalse(Schema::hasColumn('test_table', 'archived_email_20200101_120000'));
+
+        // Clean up
+        Schema::dropIfExists('test_table');
+    }
+
+    public function test_cleanup_service_get_statistics()
+    {
+        // Create test archived tables
+        $this->createOldArchivedTable();
+        $this->createRecentArchivedTable();
+
+        $service = new ArchiveCleanupService();
+        $stats = $service->getStatistics();
+
+        $this->assertIsArray($stats);
+        $this->assertArrayHasKey('archived_tables', $stats);
+        $this->assertArrayHasKey('archived_columns', $stats);
+        $this->assertArrayHasKey('total_archived_tables', $stats);
+        $this->assertArrayHasKey('total_archived_columns', $stats);
+        $this->assertArrayHasKey('total_archived_rows', $stats);
+        $this->assertArrayHasKey('retention_days', $stats);
+        $this->assertArrayHasKey('auto_cleanup_enabled', $stats);
+
+        $this->assertGreaterThanOrEqual(2, $stats['total_archived_tables']);
+    }
+
+    public function test_cleanup_command_tracks_deleted_rows()
+    {
+        // Create an archived table with data
+        Schema::create('archived_test_data_20200101_120000', function ($table) {
+            $table->id();
+            $table->string('data');
+        });
+
+        // Insert test data
+        \DB::table('archived_test_data_20200101_120000')->insert([
+            ['data' => 'test1'],
+            ['data' => 'test2'],
+            ['data' => 'test3'],
+        ]);
+
+        $exitCode = Artisan::call('migrate:cleanup');
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Total rows to delete: 3', $output);
+    }
+
+    protected function createOldArchivedTable()
+    {
+        // Create an archived table with old timestamp in the name
+        Schema::create('archived_test_users_20200101_120000', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email');
+            $table->timestamps();
+        });
+    }
+
+    protected function createRecentArchivedTable()
+    {
+        // Create an archived table with recent timestamp
+        $recentDate = now()->format('Ymd_His');
+        Schema::create("archived_test_posts_{$recentDate}", function ($table) {
+            $table->id();
+            $table->string('title');
+            $table->text('content');
+            $table->timestamps();
+        });
+    }
+}

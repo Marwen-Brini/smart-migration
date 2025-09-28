@@ -1,0 +1,308 @@
+<?php
+
+namespace Flux\Tests\Feature\Commands;
+
+use Flux\Snapshots\SnapshotManager;
+use Flux\Tests\TestCase;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
+
+class SnapshotCommandTest extends TestCase
+{
+    protected string $snapshotPath;
+    protected SnapshotManager $snapshotManager;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->snapshotPath = storage_path('migrations/snapshots');
+        $this->snapshotManager = new SnapshotManager();
+
+        // Ensure snapshot directory exists
+        File::ensureDirectoryExists($this->snapshotPath);
+
+        // Create test tables
+        $this->createTestTables();
+    }
+
+    protected function tearDown(): void
+    {
+        // Clean up snapshots
+        File::deleteDirectory($this->snapshotPath);
+
+        // Clean up test tables
+        Schema::dropIfExists('test_users');
+        Schema::dropIfExists('test_posts');
+
+        parent::tearDown();
+    }
+
+    protected function createTestTables()
+    {
+        Schema::create('test_users', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->timestamps();
+        });
+
+        Schema::create('test_posts', function ($table) {
+            $table->id();
+            $table->string('title');
+            $table->text('content');
+            $table->timestamps();
+        });
+    }
+
+    public function test_create_snapshot_command()
+    {
+        $exitCode = Artisan::call('migrate:snapshot', [
+            'action' => 'create',
+            'name' => 'test_snapshot',
+        ]);
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Snapshot created successfully', $output);
+        $this->assertStringContainsString('test_snapshot', $output);
+
+        // Verify snapshot file exists
+        $snapshot = $this->snapshotManager->get('test_snapshot');
+        $this->assertNotNull($snapshot);
+        $this->assertEquals('test_snapshot', $snapshot['name']);
+        $this->assertArrayHasKey('schema', $snapshot);
+        $this->assertArrayHasKey('tables', $snapshot['schema']);
+    }
+
+    public function test_create_snapshot_with_auto_generated_name()
+    {
+        $exitCode = Artisan::call('migrate:snapshot', [
+            'action' => 'create',
+        ]);
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Snapshot created successfully', $output);
+
+        // Verify snapshot was created with auto-generated name
+        $snapshots = $this->snapshotManager->list();
+        $this->assertCount(1, $snapshots);
+        $this->assertStringContainsString('snapshot_', $snapshots[0]['name']);
+    }
+
+    public function test_list_snapshots_command()
+    {
+        // Create multiple snapshots
+        $this->snapshotManager->create('snapshot_1');
+        $this->snapshotManager->create('snapshot_2');
+        $this->snapshotManager->create('snapshot_3');
+
+        $exitCode = Artisan::call('migrate:snapshot', [
+            'action' => 'list',
+        ]);
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Schema Snapshots', $output);
+        $this->assertStringContainsString('snapshot_1', $output);
+        $this->assertStringContainsString('snapshot_2', $output);
+        $this->assertStringContainsString('snapshot_3', $output);
+        $this->assertStringContainsString('Total snapshots: 3', $output);
+    }
+
+    public function test_list_snapshots_when_empty()
+    {
+        $exitCode = Artisan::call('migrate:snapshot', [
+            'action' => 'list',
+        ]);
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('No snapshots found', $output);
+    }
+
+    public function test_show_snapshot_command()
+    {
+        // Create a snapshot
+        $this->snapshotManager->create('test_snapshot');
+
+        $exitCode = Artisan::call('migrate:snapshot', [
+            'action' => 'show',
+            'name' => 'test_snapshot',
+        ]);
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Snapshot: test_snapshot', $output);
+        $this->assertStringContainsString('Metadata:', $output);
+        $this->assertStringContainsString('Schema Summary:', $output);
+        $this->assertStringContainsString('Tables:', $output);
+        $this->assertStringContainsString('test_users', $output);
+        $this->assertStringContainsString('test_posts', $output);
+    }
+
+    public function test_show_snapshot_not_found()
+    {
+        $exitCode = Artisan::call('migrate:snapshot', [
+            'action' => 'show',
+            'name' => 'non_existent',
+        ]);
+
+        $this->assertEquals(1, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString("Snapshot 'non_existent' not found", $output);
+    }
+
+    public function test_compare_snapshots_command()
+    {
+        // Create first snapshot
+        $this->snapshotManager->create('snapshot_before');
+
+        // Modify schema
+        Schema::create('test_comments', function ($table) {
+            $table->id();
+            $table->text('content');
+            $table->timestamps();
+        });
+
+        // Create second snapshot
+        $this->snapshotManager->create('snapshot_after');
+
+        $exitCode = Artisan::call('migrate:snapshot', [
+            'action' => 'compare',
+            'name' => 'snapshot_before',
+            '--compare-with' => 'snapshot_after',
+        ]);
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Comparing Snapshots', $output);
+        $this->assertStringContainsString('Added Tables', $output);
+        $this->assertStringContainsString('test_comments', $output);
+
+        // Clean up
+        Schema::dropIfExists('test_comments');
+    }
+
+    public function test_compare_identical_snapshots()
+    {
+        // Create two identical snapshots
+        $this->snapshotManager->create('snapshot_1');
+        $this->snapshotManager->create('snapshot_2');
+
+        $exitCode = Artisan::call('migrate:snapshot', [
+            'action' => 'compare',
+            'name' => 'snapshot_1',
+            '--compare-with' => 'snapshot_2',
+        ]);
+
+        $this->assertEquals(0, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Snapshots are identical', $output);
+    }
+
+    public function test_delete_snapshot_command_with_confirmation()
+    {
+        // Create a snapshot
+        $this->snapshotManager->create('test_snapshot');
+
+        // Mock the confirmation to return yes
+        $this->artisan('migrate:snapshot', [
+            'action' => 'delete',
+            'name' => 'test_snapshot',
+        ])
+        ->expectsConfirmation("Are you sure you want to delete snapshot 'test_snapshot'?", 'yes')
+        ->assertExitCode(0)
+        ->expectsOutput("✅ Snapshot 'test_snapshot' deleted successfully.");
+
+        // Verify snapshot was deleted
+        $snapshot = $this->snapshotManager->get('test_snapshot');
+        $this->assertNull($snapshot);
+    }
+
+    public function test_delete_snapshot_command_cancelled()
+    {
+        // Create a snapshot
+        $this->snapshotManager->create('test_snapshot');
+
+        // Mock the confirmation to return no
+        $this->artisan('migrate:snapshot', [
+            'action' => 'delete',
+            'name' => 'test_snapshot',
+        ])
+        ->expectsConfirmation("Are you sure you want to delete snapshot 'test_snapshot'?", 'no')
+        ->assertExitCode(0)
+        ->expectsOutput('Deletion cancelled.');
+
+        // Verify snapshot was not deleted
+        $snapshot = $this->snapshotManager->get('test_snapshot');
+        $this->assertNotNull($snapshot);
+    }
+
+    public function test_invalid_action()
+    {
+        $exitCode = Artisan::call('migrate:snapshot', [
+            'action' => 'invalid_action',
+        ]);
+
+        $this->assertEquals(1, $exitCode);
+
+        $output = Artisan::output();
+        $this->assertStringContainsString('Invalid action: invalid_action', $output);
+        $this->assertStringContainsString('Valid actions: create, list, show, compare, delete', $output);
+    }
+
+    public function test_snapshot_includes_table_row_counts()
+    {
+        // Add some test data
+        \DB::table('test_users')->insert([
+            ['name' => 'John', 'email' => 'john@example.com'],
+            ['name' => 'Jane', 'email' => 'jane@example.com'],
+        ]);
+
+        \DB::table('test_posts')->insert([
+            ['title' => 'Post 1', 'content' => 'Content 1'],
+            ['title' => 'Post 2', 'content' => 'Content 2'],
+            ['title' => 'Post 3', 'content' => 'Content 3'],
+        ]);
+
+        $this->snapshotManager->create('data_snapshot');
+
+        $snapshot = $this->snapshotManager->get('data_snapshot');
+
+        $this->assertEquals(2, $snapshot['schema']['tables']['test_users']['row_count']);
+        $this->assertEquals(3, $snapshot['schema']['tables']['test_posts']['row_count']);
+    }
+
+    public function test_snapshot_respects_max_snapshots_limit()
+    {
+        // Set max snapshots to 3
+        config(['smart-migration.snapshots.max_snapshots' => 3]);
+
+        // Create 4 snapshots
+        for ($i = 1; $i <= 4; $i++) {
+            sleep(1); // Ensure different timestamps
+            $this->snapshotManager->create("snapshot_{$i}");
+        }
+
+        // Should only have 3 snapshots (oldest one deleted)
+        $snapshots = $this->snapshotManager->list();
+        $this->assertCount(3, $snapshots);
+
+        // Verify the oldest snapshot was deleted
+        $this->assertNull($this->snapshotManager->get('snapshot_1'));
+        $this->assertNotNull($this->snapshotManager->get('snapshot_2'));
+        $this->assertNotNull($this->snapshotManager->get('snapshot_3'));
+        $this->assertNotNull($this->snapshotManager->get('snapshot_4'));
+    }
+}
