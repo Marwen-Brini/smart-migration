@@ -2,12 +2,12 @@
 
 namespace Flux;
 
-use Spatie\LaravelPackageTools\Package;
-use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Flux\Commands\FluxCommand;
 use Flux\Commands\PlanCommand;
 use Flux\Commands\SafeCommand;
 use Flux\Commands\UndoCommand;
+use Spatie\LaravelPackageTools\Package;
+use Spatie\LaravelPackageTools\PackageServiceProvider;
 
 class FluxServiceProvider extends PackageServiceProvider
 {

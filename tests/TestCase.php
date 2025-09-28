@@ -2,9 +2,9 @@
 
 namespace Flux\Tests;
 
+use Flux\FluxServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
-use Flux\FluxServiceProvider;
 
 class TestCase extends Orchestra
 {
