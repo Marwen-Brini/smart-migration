@@ -2,9 +2,9 @@
 
 namespace Flux;
 
+use Flux\Commands\FluxCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use Flux\Commands\FluxCommand;
 
 class FluxServiceProvider extends PackageServiceProvider
 {
