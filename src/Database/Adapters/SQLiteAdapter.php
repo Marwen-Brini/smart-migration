@@ -22,7 +22,7 @@ class SQLiteAdapter extends DatabaseAdapter
     {
         $result = DB::select("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", [$table]);
 
-        if (!empty($result)) {
+        if (! empty($result)) {
             return $result[0]->sql;
         }
 
@@ -64,7 +64,7 @@ class SQLiteAdapter extends DatabaseAdapter
         $data = $this->getTableData($table);
 
         // Create temporary table with new column name
-        $tempTable = "{$table}_temp_" . time();
+        $tempTable = "{$table}_temp_".time();
         $newStructure = str_replace(
             "\"{$column}\"",
             "\"{$newName}\"",
@@ -83,15 +83,15 @@ class SQLiteAdapter extends DatabaseAdapter
         $this->execute($newStructure);
 
         // Copy data
-        if (!empty($data)) {
+        if (! empty($data)) {
             $columns = $this->getTableColumns($table);
             $columnNames = array_column($columns, 'name');
             $newColumnNames = array_map(function ($col) use ($column, $newName) {
                 return $col === $column ? $newName : $col;
             }, $columnNames);
 
-            $oldCols = implode(', ', array_map(fn($c) => "\"{$c}\"", $columnNames));
-            $newCols = implode(', ', array_map(fn($c) => "\"{$c}\"", $newColumnNames));
+            $oldCols = implode(', ', array_map(fn ($c) => "\"{$c}\"", $columnNames));
+            $newCols = implode(', ', array_map(fn ($c) => "\"{$c}\"", $newColumnNames));
 
             $this->execute("INSERT INTO \"{$tempTable}\" ({$newCols}) SELECT {$oldCols} FROM \"{$table}\"");
         }
@@ -212,7 +212,7 @@ class SQLiteAdapter extends DatabaseAdapter
     {
         // SQLite doesn't support DROP COLUMN before version 3.35.0
         // We need to recreate the table without the column
-        return "-- SQLite: DROP COLUMN requires table recreation";
+        return '-- SQLite: DROP COLUMN requires table recreation';
     }
 
     /**
@@ -230,6 +230,7 @@ class SQLiteAdapter extends DatabaseAdapter
     public function getCreateIndexSQL(string $table, string $name, array $columns): string
     {
         $columnList = implode('", "', $columns);
+
         return "CREATE INDEX \"{$name}\" ON \"{$table}\" (\"{$columnList}\")";
     }
 

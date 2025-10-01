@@ -3,7 +3,6 @@
 namespace Flux\Commands;
 
 use Flux\Cleanup\ArchiveCleanupService;
-use Flux\Config\SmartMigrationConfig;
 use Illuminate\Console\Command;
 
 class CleanupCommand extends Command
@@ -19,7 +18,7 @@ class CleanupCommand extends Command
     public function __construct()
     {
         parent::__construct();
-        $this->cleanupService = new ArchiveCleanupService();
+        $this->cleanupService = app(ArchiveCleanupService::class);
     }
 
     public function handle(): int
@@ -43,20 +42,22 @@ class CleanupCommand extends Command
         $result = $this->cleanupService->cleanup($dryRun);
 
         if ($result['status'] === 'disabled') {
-            $this->warn('⚠️  ' . $result['message']);
+            $this->warn('⚠️  '.$result['message']);
             $this->comment('Enable auto_cleanup in config/smart-migration.php to use this feature.');
+
             return self::FAILURE;
         }
 
         if ($result['status'] === 'skipped') {
-            $this->info('ℹ️  ' . $result['message']);
+            $this->info('ℹ️  '.$result['message']);
+
             return self::SUCCESS;
         }
 
         // Display results
         $this->displayCleanupResults($result);
 
-        if (!$dryRun && (count($result['tables_cleaned']) > 0 || count($result['columns_cleaned']) > 0)) {
+        if (! $dryRun && (count($result['tables_cleaned']) > 0 || count($result['columns_cleaned']) > 0)) {
             $this->newLine();
             $this->info('✅ Cleanup completed successfully!');
         }
@@ -75,7 +76,7 @@ class CleanupCommand extends Command
         $this->newLine();
 
         // Display cleaned tables
-        if (!empty($result['tables_cleaned'])) {
+        if (! empty($result['tables_cleaned'])) {
             $this->info('📋 Archived Tables to Clean:');
 
             $rows = array_map(function ($table) {
@@ -91,7 +92,7 @@ class CleanupCommand extends Command
         }
 
         // Display cleaned columns
-        if (!empty($result['columns_cleaned'])) {
+        if (! empty($result['columns_cleaned'])) {
             $this->info('📋 Archived Columns to Clean:');
 
             $rows = array_map(function ($column) {
@@ -111,9 +112,9 @@ class CleanupCommand extends Command
             $this->info('✅ No archived data older than retention period found.');
         } else {
             $this->info('Summary:');
-            $this->line("  Tables to clean: " . count($result['tables_cleaned']));
-            $this->line("  Columns to clean: " . count($result['columns_cleaned']));
-            $this->line("  Total rows to delete: " . number_format($result['total_rows_deleted']));
+            $this->line('  Tables to clean: '.count($result['tables_cleaned']));
+            $this->line('  Columns to clean: '.count($result['columns_cleaned']));
+            $this->line('  Total rows to delete: '.number_format($result['total_rows_deleted']));
 
             if ($result['dry_run']) {
                 $this->newLine();
@@ -135,12 +136,12 @@ class CleanupCommand extends Command
 
         // Display configuration
         $this->info('Configuration:');
-        $this->line('  Auto Cleanup: ' . ($stats['auto_cleanup_enabled'] ? 'Enabled' : 'Disabled'));
-        $this->line('  Retention Days: ' . ($stats['retention_days'] > 0 ? $stats['retention_days'] : 'Keep Forever'));
+        $this->line('  Auto Cleanup: '.($stats['auto_cleanup_enabled'] ? 'Enabled' : 'Disabled'));
+        $this->line('  Retention Days: '.($stats['retention_days'] > 0 ? $stats['retention_days'] : 'Keep Forever'));
         $this->newLine();
 
         // Display archived tables
-        if (!empty($stats['archived_tables'])) {
+        if (! empty($stats['archived_tables'])) {
             $this->info('📋 Archived Tables:');
 
             $rows = array_map(function ($table) {
@@ -156,7 +157,7 @@ class CleanupCommand extends Command
         }
 
         // Display archived columns
-        if (!empty($stats['archived_columns'])) {
+        if (! empty($stats['archived_columns'])) {
             $this->info('📋 Archived Columns:');
 
             $rows = array_map(function ($column) {
@@ -173,9 +174,9 @@ class CleanupCommand extends Command
 
         // Summary
         $this->info('Summary:');
-        $this->line('  Total Archived Tables: ' . $stats['total_archived_tables']);
-        $this->line('  Total Archived Columns: ' . $stats['total_archived_columns']);
-        $this->line('  Total Archived Rows: ' . number_format($stats['total_archived_rows']));
+        $this->line('  Total Archived Tables: '.$stats['total_archived_tables']);
+        $this->line('  Total Archived Columns: '.$stats['total_archived_columns']);
+        $this->line('  Total Archived Rows: '.number_format($stats['total_archived_rows']));
 
         if ($stats['retention_days'] > 0) {
             $this->newLine();

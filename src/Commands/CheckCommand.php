@@ -3,7 +3,7 @@
 namespace Flux\Commands;
 
 use Flux\Config\SmartMigrationConfig;
-use Flux\Database\DatabaseAdapterFactory;
+use Flux\Database\DatabaseAdapterFactoryInterface;
 use Flux\Snapshots\SnapshotManager;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -19,10 +19,13 @@ class CheckCommand extends Command
 
     protected SnapshotManager $snapshotManager;
 
+    protected DatabaseAdapterFactoryInterface $adapterFactory;
+
     public function __construct()
     {
         parent::__construct();
-        $this->snapshotManager = new SnapshotManager();
+        $this->snapshotManager = app(SnapshotManager::class);
+        $this->adapterFactory = app(DatabaseAdapterFactoryInterface::class);
     }
 
     public function handle(): int
@@ -31,7 +34,7 @@ class CheckCommand extends Command
         $this->comment('═══════════════════════════════════════════════════════════════════════════════');
         $this->newLine();
 
-        $adapter = DatabaseAdapterFactory::create();
+        $adapter = $this->adapterFactory->create();
 
         // Get current database schema
         $currentSchema = $this->getCurrentDatabaseSchema();
@@ -41,8 +44,9 @@ class CheckCommand extends Command
             ? $this->getSnapshotSchema()
             : $this->getExpectedSchemaFromMigrations();
 
-        if (!$expectedSchema) {
+        if (! $expectedSchema) {
             $this->warn('⚠️  No baseline schema found. Run migrate:snapshot to create one.');
+
             return self::FAILURE;
         }
 
@@ -51,6 +55,7 @@ class CheckCommand extends Command
 
         if (empty($drift)) {
             $this->info('✅ No schema drift detected! Database matches expected state.');
+
             return self::SUCCESS;
         }
 
@@ -73,7 +78,7 @@ class CheckCommand extends Command
      */
     protected function getCurrentDatabaseSchema(): array
     {
-        $adapter = DatabaseAdapterFactory::create();
+        $adapter = $this->adapterFactory->create();
         $schema = [
             'tables' => [],
         ];
@@ -89,7 +94,9 @@ class CheckCommand extends Command
                     break;
                 }
             }
-            if ($skip) continue;
+            if ($skip) {
+                continue;
+            }
 
             $schema['tables'][$table] = [
                 'columns' => $adapter->getTableColumns($table),
@@ -107,6 +114,7 @@ class CheckCommand extends Command
     protected function getSnapshotSchema(): ?array
     {
         $snapshot = $this->snapshotManager->getLatest();
+
         return $snapshot['schema'] ?? null;
     }
 
@@ -119,7 +127,7 @@ class CheckCommand extends Command
         // For now, we'll use snapshot as the source of truth
         $snapshot = $this->snapshotManager->getLatest();
 
-        if (!$snapshot) {
+        if (! $snapshot) {
             // Try to build from migrations table
             $migrations = DB::table('migrations')->orderBy('batch')->get();
 
@@ -128,6 +136,7 @@ class CheckCommand extends Command
             }
 
             $this->warn('Building expected schema from migration history...');
+
             // This is a simplified version - in production, we'd parse each migration
             return $this->getCurrentDatabaseSchema();
         }
@@ -150,8 +159,9 @@ class CheckCommand extends Command
 
         // Find missing and changed tables
         foreach ($expected['tables'] ?? [] as $tableName => $expectedTable) {
-            if (!isset($current['tables'][$tableName])) {
+            if (! isset($current['tables'][$tableName])) {
                 $drift['missing_tables'][] = $tableName;
+
                 continue;
             }
 
@@ -164,18 +174,22 @@ class CheckCommand extends Command
 
             // Find missing columns
             foreach ($expectedColumns as $colName => $colDef) {
-                if (in_array($colName, $ignoredColumns)) continue;
+                if (in_array($colName, $ignoredColumns)) {
+                    continue;
+                }
 
-                if (!isset($currentColumns[$colName])) {
+                if (! isset($currentColumns[$colName])) {
                     $changes['missing_columns'][] = $colName;
                 }
             }
 
             // Find extra columns
             foreach ($currentColumns as $colName => $colDef) {
-                if (in_array($colName, $ignoredColumns)) continue;
+                if (in_array($colName, $ignoredColumns)) {
+                    continue;
+                }
 
-                if (!isset($expectedColumns[$colName])) {
+                if (! isset($expectedColumns[$colName])) {
                     $changes['extra_columns'][] = $colName;
                 }
             }
@@ -185,31 +199,31 @@ class CheckCommand extends Command
             $currentIndexes = array_column($currentTable['indexes'] ?? [], null, 'name');
 
             foreach ($expectedIndexes as $idxName => $idxDef) {
-                if (!isset($currentIndexes[$idxName])) {
+                if (! isset($currentIndexes[$idxName])) {
                     $changes['missing_indexes'][] = $idxName;
                 }
             }
 
             foreach ($currentIndexes as $idxName => $idxDef) {
-                if (!isset($expectedIndexes[$idxName])) {
+                if (! isset($expectedIndexes[$idxName])) {
                     $changes['extra_indexes'][] = $idxName;
                 }
             }
 
-            if (!empty($changes)) {
+            if (! empty($changes)) {
                 $drift['table_changes'][$tableName] = $changes;
             }
         }
 
         // Find extra tables
         foreach ($current['tables'] ?? [] as $tableName => $currentTable) {
-            if (!isset($expected['tables'][$tableName])) {
+            if (! isset($expected['tables'][$tableName])) {
                 $drift['extra_tables'][] = $tableName;
             }
         }
 
         // Clean up empty arrays
-        $drift = array_filter($drift, fn($v) => !empty($v));
+        $drift = array_filter($drift, fn ($v) => ! empty($v));
 
         return $drift;
     }
@@ -222,7 +236,7 @@ class CheckCommand extends Command
         $this->error('⚠️  Schema Drift Detected!');
         $this->newLine();
 
-        if (!empty($drift['missing_tables'])) {
+        if (! empty($drift['missing_tables'])) {
             $this->warn('📋 Missing Tables (exist in migrations but not in database):');
             foreach ($drift['missing_tables'] as $table) {
                 $this->line("   - {$table}");
@@ -230,7 +244,7 @@ class CheckCommand extends Command
             $this->newLine();
         }
 
-        if (!empty($drift['extra_tables'])) {
+        if (! empty($drift['extra_tables'])) {
             $this->warn('📋 Extra Tables (exist in database but not in migrations):');
             foreach ($drift['extra_tables'] as $table) {
                 $this->line("   - {$table}");
@@ -238,22 +252,22 @@ class CheckCommand extends Command
             $this->newLine();
         }
 
-        if (!empty($drift['table_changes'])) {
+        if (! empty($drift['table_changes'])) {
             $this->warn('📋 Table Differences:');
             foreach ($drift['table_changes'] as $table => $changes) {
                 $this->info("   Table: {$table}");
 
-                if (!empty($changes['missing_columns'])) {
-                    $this->line("     Missing columns: " . implode(', ', $changes['missing_columns']));
+                if (! empty($changes['missing_columns'])) {
+                    $this->line('     Missing columns: '.implode(', ', $changes['missing_columns']));
                 }
-                if (!empty($changes['extra_columns'])) {
-                    $this->line("     Extra columns: " . implode(', ', $changes['extra_columns']));
+                if (! empty($changes['extra_columns'])) {
+                    $this->line('     Extra columns: '.implode(', ', $changes['extra_columns']));
                 }
-                if (!empty($changes['missing_indexes'])) {
-                    $this->line("     Missing indexes: " . implode(', ', $changes['missing_indexes']));
+                if (! empty($changes['missing_indexes'])) {
+                    $this->line('     Missing indexes: '.implode(', ', $changes['missing_indexes']));
                 }
-                if (!empty($changes['extra_indexes'])) {
-                    $this->line("     Extra indexes: " . implode(', ', $changes['extra_indexes']));
+                if (! empty($changes['extra_indexes'])) {
+                    $this->line('     Extra indexes: '.implode(', ', $changes['extra_indexes']));
                 }
             }
             $this->newLine();
@@ -268,7 +282,7 @@ class CheckCommand extends Command
         $this->info('🔧 Generating migration to fix drift...');
 
         $timestamp = date('Y_m_d_His');
-        $className = 'FixSchemaDrift' . $timestamp;
+        $className = 'FixSchemaDrift'.$timestamp;
         $filename = database_path("migrations/{$timestamp}_fix_schema_drift.php");
 
         $migration = $this->buildMigrationContent($className, $drift);
@@ -294,8 +308,8 @@ class CheckCommand extends Command
         foreach ($drift['missing_tables'] ?? [] as $table) {
             $up[] = "        // TODO: Create table '{$table}'";
             $up[] = "        Schema::create('{$table}', function (Blueprint \$table) {";
-            $up[] = "            // Add columns here";
-            $up[] = "        });";
+            $up[] = '            // Add columns here';
+            $up[] = '        });';
             $down[] = "        Schema::dropIfExists('{$table}');";
         }
 
@@ -307,20 +321,20 @@ class CheckCommand extends Command
 
         // Handle table changes
         foreach ($drift['table_changes'] ?? [] as $table => $changes) {
-            if (!empty($changes['missing_columns']) || !empty($changes['extra_columns'])) {
+            if (! empty($changes['missing_columns']) || ! empty($changes['extra_columns'])) {
                 $up[] = "        Schema::table('{$table}', function (Blueprint \$table) {";
 
                 foreach ($changes['missing_columns'] ?? [] as $column) {
-                    $up[] = "            // TODO: Add missing column";
+                    $up[] = '            // TODO: Add missing column';
                     $up[] = "            // \$table->string('{$column}')->nullable();";
                 }
 
                 foreach ($changes['extra_columns'] ?? [] as $column) {
-                    $up[] = "            // Extra column found - consider if it should be removed";
+                    $up[] = '            // Extra column found - consider if it should be removed';
                     $up[] = "            // \$table->dropColumn('{$column}');";
                 }
 
-                $up[] = "        });";
+                $up[] = '        });';
             }
         }
 

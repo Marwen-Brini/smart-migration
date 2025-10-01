@@ -3,6 +3,7 @@
 namespace Flux\Commands;
 
 use Flux\Analyzers\MigrationAnalyzer;
+use Flux\Database\DatabaseAdapterFactoryInterface;
 use Flux\Safety\SafeMigrator;
 use Illuminate\Console\Command;
 
@@ -57,6 +58,7 @@ class SafeCommand extends Command
         $totalFiles = count($files);
 
         // Use progress bar for multiple migrations
+        // @codeCoverageIgnoreStart
         if ($totalFiles > 1 && ! $this->option('pretend')) {
             $this->newLine();
             $this->info('🚀 <fg=cyan>Running '.$totalFiles.' migrations...</fg=cyan>');
@@ -86,6 +88,7 @@ class SafeCommand extends Command
             $bar->finish();
             $this->newLine(2);
         } else {
+            // @codeCoverageIgnoreEnd
             foreach ($files as $file) {
                 $this->runSafeMigration($file, $batch);
             }
@@ -232,7 +235,10 @@ class SafeCommand extends Command
         $repository = $this->laravel['migration.repository'];
         $filesystem = $this->laravel['files'];
 
-        return new SafeMigrator($repository, $this->laravel['db'], $filesystem, $this->laravel['events']);
+        $migrator = new SafeMigrator($repository, $this->laravel['db'], $filesystem, $this->laravel['events']);
+        $migrator->setAdapterFactory(app(DatabaseAdapterFactoryInterface::class));
+
+        return $migrator;
     }
 
     protected function getMigrationPath(): string

@@ -31,8 +31,8 @@ class PostgreSQLAdapter extends DatabaseAdapter
         $columnDefs = [];
         foreach ($columns as $column) {
             $def = "    \"{$column['name']}\" {$column['type']}";
-            if (!$column['nullable']) {
-                $def .= " NOT NULL";
+            if (! $column['nullable']) {
+                $def .= ' NOT NULL';
             }
             if ($column['default'] !== null) {
                 $def .= " DEFAULT {$column['default']}";
@@ -160,7 +160,7 @@ class PostgreSQLAdapter extends DatabaseAdapter
 
         $grouped = [];
         foreach ($indexes as $index) {
-            if (!isset($grouped[$index->index_name])) {
+            if (! isset($grouped[$index->index_name])) {
                 $grouped[$index->index_name] = [
                     'name' => $index->index_name,
                     'columns' => [],
@@ -252,6 +252,7 @@ class PostgreSQLAdapter extends DatabaseAdapter
     public function getCreateIndexSQL(string $table, string $name, array $columns): string
     {
         $columnList = implode('", "', $columns);
+
         return "CREATE INDEX \"{$name}\" ON \"{$table}\" (\"{$columnList}\")";
     }
 

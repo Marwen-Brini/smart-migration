@@ -60,12 +60,13 @@ abstract class BaseSmartMigrationCommand extends Command
      */
     protected function displayColored(string $message, string $color = 'info'): void
     {
-        if (!SmartMigrationConfig::colorsEnabled()) {
+        if (! SmartMigrationConfig::colorsEnabled()) {
             $this->line($message);
+
             return;
         }
 
-        match($color) {
+        match ($color) {
             'info' => $this->info($message),
             'comment' => $this->comment($message),
             'error' => $this->error($message),
@@ -108,11 +109,11 @@ abstract class BaseSmartMigrationCommand extends Command
      */
     protected function getRiskEmoji(string $risk): string
     {
-        if (!SmartMigrationConfig::emojisEnabled()) {
+        if (! SmartMigrationConfig::emojisEnabled()) {
             return '';
         }
 
-        return match($risk) {
+        return match ($risk) {
             'safe' => '✅',
             'warning' => '⚠️',
             'danger' => '🔴',
@@ -125,7 +126,7 @@ abstract class BaseSmartMigrationCommand extends Command
      */
     protected function getRiskColor(string $risk): string
     {
-        return match($risk) {
+        return match ($risk) {
             'safe' => 'green',
             'warning' => 'yellow',
             'danger' => 'red',
@@ -141,11 +142,12 @@ abstract class BaseSmartMigrationCommand extends Command
         $emoji = $this->getRiskEmoji($risk);
         $label = strtoupper($risk);
 
-        if (!SmartMigrationConfig::colorsEnabled()) {
+        if (! SmartMigrationConfig::colorsEnabled()) {
             return $emoji ? "{$emoji} {$label}" : $label;
         }
 
         $color = $this->getRiskColor($risk);
+
         return $emoji ? "{$emoji} <fg={$color}>{$label}</fg={$color}>" : "<fg={$color}>{$label}</fg={$color}>";
     }
 }

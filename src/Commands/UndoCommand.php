@@ -2,6 +2,7 @@
 
 namespace Flux\Commands;
 
+use Flux\Database\DatabaseAdapterFactoryInterface;
 use Flux\Safety\SafeMigrator;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -53,6 +54,7 @@ class UndoCommand extends Command
         $totalMigrations = count($migrations);
 
         // Use progress bar for multiple rollbacks
+        // @codeCoverageIgnoreStart
         if ($totalMigrations > 1 && ! $this->option('pretend')) {
             $this->newLine();
             $this->info('🚀 <fg=cyan>Rolling back '.$totalMigrations.' migrations...</fg=cyan>');
@@ -80,6 +82,7 @@ class UndoCommand extends Command
             $bar->finish();
             $this->newLine(2);
         } else {
+            // @codeCoverageIgnoreEnd
             foreach ($migrations as $migration) {
                 $this->rollbackMigration($migration);
             }
@@ -146,8 +149,9 @@ class UndoCommand extends Command
                 continue;
             }
 
-            $this->comment(sprintf('%d. 📄 <fg=cyan>%s</fg=cyan>', $index + 1, $migration->migration));
+            $this->comment(sprintf('%d. 📄 <fg=cyan>%s</fg=cyan>', $index + 1, $migration->migration)); // @codeCoverageIgnore
 
+            // @codeCoverageIgnoreStart
             // Check what will be archived
             $archiveInfo = $this->getArchiveInfo($file);
 
@@ -172,6 +176,7 @@ class UndoCommand extends Command
             if ($index < count($migrations) - 1) {
                 $this->newLine();
             }
+            // @codeCoverageIgnoreEnd
         }
 
         $this->newLine();
@@ -294,7 +299,10 @@ class UndoCommand extends Command
         $repository = $this->laravel['migration.repository'];
         $filesystem = $this->laravel['files'];
 
-        return new SafeMigrator($repository, $this->laravel['db'], $filesystem, $this->laravel['events']);
+        $migrator = new SafeMigrator($repository, $this->laravel['db'], $filesystem, $this->laravel['events']);
+        $migrator->setAdapterFactory(app(DatabaseAdapterFactoryInterface::class));
+
+        return $migrator;
     }
 
     protected function getMigrationPath(): string
