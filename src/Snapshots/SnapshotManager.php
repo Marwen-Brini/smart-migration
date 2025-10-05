@@ -3,22 +3,27 @@
 namespace Flux\Snapshots;
 
 use Flux\Config\SmartMigrationConfig;
-use Flux\Database\DatabaseAdapterFactory;
+use Flux\Database\DatabaseAdapterFactoryInterface;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
 
 class SnapshotManager
 {
     protected string $snapshotPath;
+
     protected string $format;
 
-    public function __construct()
+    protected DatabaseAdapterFactoryInterface $adapterFactory;
+
+    public function __construct(?DatabaseAdapterFactoryInterface $adapterFactory = null)
     {
+        // Support both DI and legacy instantiation
+        $this->adapterFactory = $adapterFactory ?? app(DatabaseAdapterFactoryInterface::class);
+
         $this->snapshotPath = database_path(SmartMigrationConfig::getSnapshotPath());
         $this->format = SmartMigrationConfig::getSnapshotFormat();
 
         // Ensure snapshot directory exists
-        if (!File::exists($this->snapshotPath)) {
+        if (! File::exists($this->snapshotPath)) {
             File::makeDirectory($this->snapshotPath, 0755, true);
         }
     }
@@ -26,11 +31,11 @@ class SnapshotManager
     /**
      * Create a new snapshot of the current database schema
      */
-    public function create(string $name = null): array
+    public function create(?string $name = null): array
     {
-        $adapter = DatabaseAdapterFactory::create();
+        $adapter = $this->adapterFactory->create();
 
-        $name = $name ?: 'snapshot_' . date('Y_m_d_His');
+        $name = $name ?: 'snapshot_'.date('Y_m_d_His');
         $version = $this->generateVersion();
 
         $snapshot = [
@@ -74,7 +79,7 @@ class SnapshotManager
         }
 
         // Sort by modification time
-        usort($files, fn($a, $b) => filemtime($b) - filemtime($a));
+        usort($files, fn ($a, $b) => File::lastModified($b) - File::lastModified($a));
 
         return $this->loadSnapshot($files[0]);
     }
@@ -86,7 +91,7 @@ class SnapshotManager
     {
         $filepath = "{$this->snapshotPath}/{$name}.{$this->format}";
 
-        if (!File::exists($filepath)) {
+        if (! File::exists($filepath)) {
             return null;
         }
 
@@ -109,14 +114,14 @@ class SnapshotManager
                     'version' => $snapshot['version'],
                     'timestamp' => $snapshot['timestamp'],
                     'environment' => $snapshot['environment'] ?? 'unknown',
-                    'size' => filesize($file),
+                    'size' => File::size($file),
                     'path' => $file,
                 ];
             }
         }
 
         // Sort by timestamp descending
-        usort($snapshots, fn($a, $b) => strcmp($b['timestamp'], $a['timestamp']));
+        usort($snapshots, fn ($a, $b) => strcmp($b['timestamp'], $a['timestamp']));
 
         return $snapshots;
     }
@@ -143,7 +148,7 @@ class SnapshotManager
         $snap1 = $this->get($snapshot1);
         $snap2 = $this->get($snapshot2);
 
-        if (!$snap1 || !$snap2) {
+        if (! $snap1 || ! $snap2) {
             throw new \Exception('One or both snapshots not found');
         }
 
@@ -157,7 +162,7 @@ class SnapshotManager
     {
         $snapshot = $this->get($name);
 
-        if (!$snapshot) {
+        if (! $snapshot) {
             throw new \Exception("Snapshot '{$name}' not found");
         }
 
@@ -171,7 +176,7 @@ class SnapshotManager
      */
     protected function captureSchema(): array
     {
-        $adapter = DatabaseAdapterFactory::create();
+        $adapter = $this->adapterFactory->create();
         $schema = [
             'tables' => [],
         ];
@@ -187,7 +192,9 @@ class SnapshotManager
                     break;
                 }
             }
-            if ($skip) continue;
+            if ($skip) {
+                continue;
+            }
 
             $schema['tables'][$table] = [
                 'columns' => $adapter->getTableColumns($table),
@@ -205,7 +212,7 @@ class SnapshotManager
      */
     protected function captureData(): array
     {
-        $adapter = DatabaseAdapterFactory::create();
+        $adapter = $this->adapterFactory->create();
         $data = [];
 
         foreach ($adapter->getAllTables() as $table) {
@@ -239,7 +246,7 @@ class SnapshotManager
         $content = match ($this->format) {
             'json' => json_encode($snapshot, JSON_PRETTY_PRINT),
             'yaml' => yaml_emit($snapshot),
-            'php' => "<?php\n\nreturn " . var_export($snapshot, true) . ";\n",
+            'php' => "<?php\n\nreturn ".var_export($snapshot, true).";\n",
             default => json_encode($snapshot, JSON_PRETTY_PRINT),
         };
 
@@ -251,7 +258,7 @@ class SnapshotManager
      */
     protected function loadSnapshot(string $filepath): ?array
     {
-        if (!File::exists($filepath)) {
+        if (! File::exists($filepath)) {
             return null;
         }
 
@@ -283,7 +290,7 @@ class SnapshotManager
         }
 
         // Sort by modification time (oldest first)
-        usort($files, fn($a, $b) => filemtime($a) - filemtime($b));
+        usort($files, fn ($a, $b) => File::lastModified($a) - File::lastModified($b));
 
         // Delete oldest files
         $toDelete = count($files) - $maxSnapshots;

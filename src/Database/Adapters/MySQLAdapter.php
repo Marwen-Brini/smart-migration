@@ -4,7 +4,6 @@ namespace Flux\Database\Adapters;
 
 use Flux\Database\DatabaseAdapter;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class MySQLAdapter extends DatabaseAdapter
 {
@@ -23,8 +22,9 @@ class MySQLAdapter extends DatabaseAdapter
     {
         $result = DB::select("SHOW CREATE TABLE `{$table}`");
 
-        if (!empty($result)) {
+        if (! empty($result)) {
             $createTable = (array) $result[0];
+
             return $createTable['Create Table'] ?? '';
         }
 
@@ -118,8 +118,10 @@ class MySQLAdapter extends DatabaseAdapter
         $indexes = DB::select("SHOW INDEX FROM `{$table}`");
 
         $grouped = [];
+        $uniqueStatus = [];
         foreach ($indexes as $index) {
             $grouped[$index->Key_name][] = $index->Column_name;
+            $uniqueStatus[$index->Key_name] = $index->Non_unique == 0;
         }
 
         $result = [];
@@ -127,7 +129,7 @@ class MySQLAdapter extends DatabaseAdapter
             $result[] = [
                 'name' => $name,
                 'columns' => $columns,
-                'unique' => $indexes[0]->Non_unique == 0,
+                'unique' => $uniqueStatus[$name],
                 'primary' => $name === 'PRIMARY',
             ];
         }
@@ -142,7 +144,7 @@ class MySQLAdapter extends DatabaseAdapter
     {
         $database = DB::getDatabaseName();
 
-        $foreignKeys = DB::select("
+        $foreignKeys = DB::select('
             SELECT
                 CONSTRAINT_NAME as name,
                 COLUMN_NAME as column_name,
@@ -152,7 +154,7 @@ class MySQLAdapter extends DatabaseAdapter
             WHERE TABLE_SCHEMA = ?
                 AND TABLE_NAME = ?
                 AND REFERENCED_TABLE_NAME IS NOT NULL
-        ", [$database, $table]);
+        ', [$database, $table]);
 
         return array_map(function ($fk) {
             return [
@@ -214,7 +216,7 @@ class MySQLAdapter extends DatabaseAdapter
             }
         }
 
-        if (!$columnDef) {
+        if (! $columnDef) {
             throw new \Exception("Column {$from} not found in table {$table}");
         }
 
@@ -231,6 +233,7 @@ class MySQLAdapter extends DatabaseAdapter
     public function getCreateIndexSQL(string $table, string $name, array $columns): string
     {
         $columnList = implode('`, `', $columns);
+
         return "CREATE INDEX `{$name}` ON `{$table}` (`{$columnList}`)";
     }
 

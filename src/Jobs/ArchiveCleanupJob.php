@@ -15,20 +15,28 @@ class ArchiveCleanupJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    protected ArchiveCleanupService $cleanupService;
+
+    /**
+     * Create a new job instance
+     */
+    public function __construct(?ArchiveCleanupService $cleanupService = null)
+    {
+        $this->cleanupService = $cleanupService ?? new ArchiveCleanupService;
+    }
+
     /**
      * Execute the job
      */
     public function handle(): void
     {
         // Check if auto cleanup is enabled
-        if (!SmartMigrationConfig::autoCleanupEnabled()) {
+        if (! SmartMigrationConfig::autoCleanupEnabled()) {
             return;
         }
 
-        $cleanupService = new ArchiveCleanupService();
-
         try {
-            $result = $cleanupService->cleanup(false);
+            $result = $this->cleanupService->cleanup(false);
 
             // Log successful cleanup
             if (SmartMigrationConfig::loggingEnabled()) {
@@ -76,7 +84,7 @@ class ArchiveCleanupJob implements ShouldQueue
                 case 'webhook':
                     $this->sendWebhookNotification($result);
                     break;
-                // Add more channels as needed
+                    // Add more channels as needed
             }
         }
     }
@@ -88,7 +96,7 @@ class ArchiveCleanupJob implements ShouldQueue
     {
         $webhook = SmartMigrationConfig::get('notifications.slack_webhook');
 
-        if (!$webhook) {
+        if (! $webhook) {
             return;
         }
 
@@ -122,7 +130,7 @@ class ArchiveCleanupJob implements ShouldQueue
     {
         $webhook = SmartMigrationConfig::get('notifications.webhook_url');
 
-        if (!$webhook) {
+        if (! $webhook) {
             return;
         }
 

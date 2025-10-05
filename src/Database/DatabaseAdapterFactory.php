@@ -8,12 +8,21 @@ use Flux\Database\Adapters\PostgreSQLAdapter;
 use Flux\Database\Adapters\SQLiteAdapter;
 use Illuminate\Support\Facades\DB;
 
-class DatabaseAdapterFactory
+class DatabaseAdapterFactory implements DatabaseAdapterFactoryInterface
 {
     /**
      * Available adapters
      */
-    protected static array $adapters = [
+    protected array $adapters = [
+        'mysql' => MySQLAdapter::class,
+        'pgsql' => PostgreSQLAdapter::class,
+        'sqlite' => SQLiteAdapter::class,
+    ];
+
+    /**
+     * Static adapters for backward compatibility
+     */
+    protected static array $staticAdapters = [
         'mysql' => MySQLAdapter::class,
         'pgsql' => PostgreSQLAdapter::class,
         'sqlite' => SQLiteAdapter::class,
@@ -22,15 +31,20 @@ class DatabaseAdapterFactory
     /**
      * Cached adapter instance
      */
-    protected static ?DatabaseAdapter $instance = null;
+    protected ?DatabaseAdapter $instance = null;
 
     /**
-     * Get the appropriate database adapter for the current connection
+     * Static cached instance for backward compatibility
      */
-    public static function create(?string $connection = null): DatabaseAdapter
+    protected static ?DatabaseAdapter $staticInstance = null;
+
+    /**
+     * Get the appropriate database adapter for the current connection (instance method)
+     */
+    public function create(?string $connection = null): DatabaseAdapter
     {
-        if (self::$instance !== null && $connection === null) {
-            return self::$instance;
+        if ($this->instance !== null && $connection === null) {
+            return $this->instance;
         }
 
         $driver = $connection
@@ -38,64 +52,151 @@ class DatabaseAdapterFactory
             : DB::connection()->getDriverName();
 
         // Check if driver is enabled in config
-        if (!SmartMigrationConfig::isDriverEnabled($driver)) {
+        if (! SmartMigrationConfig::isDriverEnabled($driver)) {
             throw new \Exception("Database driver '{$driver}' is not enabled in Smart Migration configuration");
         }
 
         // Check if we have an adapter for this driver
-        if (!isset(self::$adapters[$driver])) {
+        if (! isset($this->adapters[$driver])) {
             throw new \Exception("No adapter available for database driver: {$driver}");
         }
 
-        $adapterClass = self::$adapters[$driver];
-        $adapter = new $adapterClass();
+        $adapterClass = $this->adapters[$driver];
+        $adapter = new $adapterClass;
 
         // Verify the adapter supports the connection
-        if (!$adapter->supports()) {
-            throw new \Exception("Adapter does not support the current database connection");
+        if (! $adapter->supports()) {
+            throw new \Exception('Adapter does not support the current database connection');
         }
 
         // Cache the instance if it's for the default connection
         if ($connection === null) {
-            self::$instance = $adapter;
+            $this->instance = $adapter;
         }
 
         return $adapter;
     }
 
     /**
-     * Register a custom adapter
+     * Static create method for backward compatibility
+     *
+     * @deprecated Use dependency injection instead
+     *
+     * @codeCoverageIgnore
      */
-    public static function register(string $driver, string $adapterClass): void
+    public static function createStatic(?string $connection = null): DatabaseAdapter
     {
-        if (!is_subclass_of($adapterClass, DatabaseAdapter::class)) {
-            throw new \Exception("Adapter must extend " . DatabaseAdapter::class);
+        // Use the singleton instance from the container if available
+        if (app()->bound(DatabaseAdapterFactoryInterface::class)) {
+            return app(DatabaseAdapterFactoryInterface::class)->create($connection);
         }
 
-        self::$adapters[$driver] = $adapterClass;
+        // Fallback to static implementation
+        if (self::$staticInstance !== null && $connection === null) {
+            return self::$staticInstance;
+        }
+
+        $driver = $connection
+            ? DB::connection($connection)->getDriverName()
+            : DB::connection()->getDriverName();
+
+        // Check if driver is enabled in config
+        if (! SmartMigrationConfig::isDriverEnabled($driver)) {
+            throw new \Exception("Database driver '{$driver}' is not enabled in Smart Migration configuration");
+        }
+
+        // Check if we have an adapter for this driver
+        if (! isset(self::$staticAdapters[$driver])) {
+            throw new \Exception("No adapter available for database driver: {$driver}");
+        }
+
+        $adapterClass = self::$staticAdapters[$driver];
+        $adapter = new $adapterClass;
+
+        // Verify the adapter supports the connection
+        if (! $adapter->supports()) {
+            throw new \Exception('Adapter does not support the current database connection');
+        }
+
+        // Cache the instance if it's for the default connection
+        if ($connection === null) {
+            self::$staticInstance = $adapter;
+        }
+
+        return $adapter;
     }
 
     /**
-     * Get all registered adapters
+     * Register a custom adapter (instance method)
      */
-    public static function getAdapters(): array
+    public function registerAdapter(string $driver, string $adapterClass): void
     {
-        return self::$adapters;
-    }
+        if (! is_subclass_of($adapterClass, DatabaseAdapter::class)) {
+            throw new \Exception('Adapter must extend '.DatabaseAdapter::class);
+        }
 
-    /**
-     * Check if an adapter is available for a driver
-     */
-    public static function hasAdapter(string $driver): bool
-    {
-        return isset(self::$adapters[$driver]);
+        $this->adapters[$driver] = $adapterClass;
     }
 
     /**
      * Clear cached instance
      */
-    public static function clearCache(): void
+    public function clearCache(): void
     {
-        self::$instance = null;
+        $this->instance = null;
+    }
+
+    /**
+     * Get all registered adapters
+     */
+    public function getAdapters(): array
+    {
+        return $this->adapters;
+    }
+
+    /**
+     * Check if an adapter is available for a driver
+     */
+    public function hasAdapter(string $driver): bool
+    {
+        return isset($this->adapters[$driver]);
+    }
+
+    // Static methods for backward compatibility
+
+    /**
+     * @deprecated Use instance method via DI
+     */
+    public static function register(string $driver, string $adapterClass): void
+    {
+        if (! is_subclass_of($adapterClass, DatabaseAdapter::class)) {
+            throw new \Exception('Adapter must extend '.DatabaseAdapter::class);
+        }
+
+        self::$staticAdapters[$driver] = $adapterClass;
+    }
+
+    /**
+     * @deprecated Use instance method via DI
+     */
+    public static function clearStaticCache(): void
+    {
+        self::$staticInstance = null;
+    }
+
+    /**
+     * @deprecated Use instance method via DI
+     */
+    public static function getStaticAdapters(): array
+    {
+        return self::$staticAdapters;
+    }
+
+    /**
+     * @deprecated Use instance method via DI
+     */
+    public static function hasStaticAdapter(string $driver): bool
+    {
+        return isset(self::$staticAdapters[$driver]);
     }
 }

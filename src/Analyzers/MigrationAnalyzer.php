@@ -3,8 +3,6 @@
 namespace Flux\Analyzers;
 
 use Flux\Config\SmartMigrationConfig;
-use Flux\Database\DatabaseAdapter;
-use Flux\Database\DatabaseAdapterFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -179,7 +177,7 @@ class MigrationAnalyzer
      */
     protected function mapOperationType(string $type): string
     {
-        return match($type) {
+        return match ($type) {
             'create_table' => 'create_table',
             'add_column' => 'add_column',
             'dropColumn' => 'drop_column',

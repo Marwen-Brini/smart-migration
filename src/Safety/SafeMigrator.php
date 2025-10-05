@@ -4,7 +4,7 @@ namespace Flux\Safety;
 
 use Flux\Config\SmartMigrationConfig;
 use Flux\Database\DatabaseAdapter;
-use Flux\Database\DatabaseAdapterFactory;
+use Flux\Database\DatabaseAdapterFactoryInterface;
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -18,13 +18,27 @@ class SafeMigrator extends Migrator
 
     protected ?DatabaseAdapter $adapter = null;
 
+    protected ?DatabaseAdapterFactoryInterface $adapterFactory = null;
+
+    /**
+     * Set the adapter factory (for dependency injection)
+     */
+    public function setAdapterFactory(DatabaseAdapterFactoryInterface $factory): void
+    {
+        $this->adapterFactory = $factory;
+    }
+
     /**
      * Get database adapter
      */
     protected function getAdapter(): DatabaseAdapter
     {
         if ($this->adapter === null) {
-            $this->adapter = DatabaseAdapterFactory::create();
+            if ($this->adapterFactory === null) {
+                // Support legacy usage
+                $this->adapterFactory = app(DatabaseAdapterFactoryInterface::class);
+            }
+            $this->adapter = $this->adapterFactory->create();
         }
 
         return $this->adapter;
@@ -112,7 +126,7 @@ class SafeMigrator extends Migrator
     protected function analyzeAndBackup(string $file): void
     {
         // Skip backup if disabled in config
-        if (!SmartMigrationConfig::autoBackupEnabled()) {
+        if (! SmartMigrationConfig::autoBackupEnabled()) {
             return;
         }
 
@@ -179,10 +193,11 @@ class SafeMigrator extends Migrator
     protected function safeRollback(string $file): void
     {
         // Skip safe rollback if disabled in config
-        if (!SmartMigrationConfig::safeRollbackEnabled()) {
+        if (! SmartMigrationConfig::safeRollbackEnabled()) {
             // Fall back to regular rollback
             $migration = $this->resolveMigration($file);
             $this->runMigration($migration, 'down');
+
             return;
         }
 

@@ -3,16 +3,25 @@
 namespace Flux\Cleanup;
 
 use Flux\Config\SmartMigrationConfig;
-use Flux\Database\DatabaseAdapterFactory;
-use Illuminate\Support\Facades\DB;
+use Flux\Database\DatabaseAdapterFactoryInterface;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class ArchiveCleanupService
 {
     protected array $cleanedTables = [];
+
     protected array $cleanedColumns = [];
+
     protected int $totalRowsDeleted = 0;
+
+    protected DatabaseAdapterFactoryInterface $adapterFactory;
+
+    public function __construct(?DatabaseAdapterFactoryInterface $adapterFactory = null)
+    {
+        // Support both DI and legacy instantiation
+        $this->adapterFactory = $adapterFactory ?? app(DatabaseAdapterFactoryInterface::class);
+    }
 
     /**
      * Clean up old archived tables and columns
@@ -20,10 +29,15 @@ class ArchiveCleanupService
     public function cleanup(bool $dryRun = false): array
     {
         // Check if auto cleanup is enabled
-        if (!SmartMigrationConfig::autoCleanupEnabled()) {
+        if (! SmartMigrationConfig::autoCleanupEnabled()) {
             return [
                 'status' => 'disabled',
                 'message' => 'Auto cleanup is disabled in configuration',
+                'dry_run' => $dryRun,
+                'tables_cleaned' => [],
+                'columns_cleaned' => [],
+                'total_rows_deleted' => 0,
+                'retention_days' => SmartMigrationConfig::getArchiveRetentionDays(),
             ];
         }
 
@@ -33,6 +47,11 @@ class ArchiveCleanupService
             return [
                 'status' => 'skipped',
                 'message' => 'Archive retention is set to keep forever',
+                'dry_run' => $dryRun,
+                'tables_cleaned' => [],
+                'columns_cleaned' => [],
+                'total_rows_deleted' => 0,
+                'retention_days' => $retentionDays,
             ];
         }
 
@@ -45,7 +64,7 @@ class ArchiveCleanupService
         $this->cleanupArchivedColumns($cutoffDate, $dryRun);
 
         // Log the cleanup
-        if (!$dryRun && SmartMigrationConfig::loggingEnabled()) {
+        if (! $dryRun && SmartMigrationConfig::loggingEnabled()) {
             $this->logCleanup();
         }
 
@@ -65,13 +84,13 @@ class ArchiveCleanupService
      */
     protected function cleanupArchivedTables(\DateTime $cutoffDate, bool $dryRun): void
     {
-        $adapter = DatabaseAdapterFactory::create();
+        $adapter = $this->adapterFactory->create();
         $tablePrefix = SmartMigrationConfig::getArchiveTablePrefix();
         $tables = $adapter->getAllTables();
 
         foreach ($tables as $table) {
             // Check if this is an archived table
-            if (!str_starts_with($table, $tablePrefix)) {
+            if (! str_starts_with($table, $tablePrefix)) {
                 continue;
             }
 
@@ -79,7 +98,9 @@ class ArchiveCleanupService
             $timestamp = $this->extractTimestamp($table);
 
             if ($timestamp && $timestamp < $cutoffDate) {
-                if (!$dryRun) {
+                $rowCount = 0;
+
+                if (! $dryRun) {
                     // Count rows before deletion
                     $rowCount = $adapter->getTableRowCount($table);
                     $this->totalRowsDeleted += $rowCount;
@@ -91,7 +112,7 @@ class ArchiveCleanupService
                 $this->cleanedTables[] = [
                     'name' => $table,
                     'archived_date' => $timestamp->format('c'),
-                    'rows' => $rowCount ?? 0,
+                    'rows' => $rowCount,
                 ];
             }
         }
@@ -102,7 +123,7 @@ class ArchiveCleanupService
      */
     protected function cleanupArchivedColumns(\DateTime $cutoffDate, bool $dryRun): void
     {
-        $adapter = DatabaseAdapterFactory::create();
+        $adapter = $this->adapterFactory->create();
         $columnPrefix = SmartMigrationConfig::getArchiveColumnPrefix();
         $tables = $adapter->getAllTables();
 
@@ -118,7 +139,7 @@ class ArchiveCleanupService
                 $columnName = $column['name'];
 
                 // Check if this is an archived column
-                if (!str_starts_with($columnName, $columnPrefix)) {
+                if (! str_starts_with($columnName, $columnPrefix)) {
                     continue;
                 }
 
@@ -126,7 +147,7 @@ class ArchiveCleanupService
                 $timestamp = $this->extractTimestamp($columnName);
 
                 if ($timestamp && $timestamp < $cutoffDate) {
-                    if (!$dryRun) {
+                    if (! $dryRun) {
                         // Drop the column
                         Schema::table($table, function ($tableSchema) use ($columnName) {
                             $tableSchema->dropColumn($columnName);
@@ -153,10 +174,14 @@ class ArchiveCleanupService
             $timestampStr = $matches[1];
 
             try {
-                return \DateTime::createFromFormat('Ymd_His', $timestampStr);
+                $date = \DateTime::createFromFormat('Ymd_His', $timestampStr);
+
+                return $date !== false ? $date : null;
+                // @codeCoverageIgnoreStart
             } catch (\Exception $e) {
                 return null;
             }
+            // @codeCoverageIgnoreEnd
         }
 
         return null;
@@ -186,7 +211,7 @@ class ArchiveCleanupService
      */
     public function getStatistics(): array
     {
-        $adapter = DatabaseAdapterFactory::create();
+        $adapter = $this->adapterFactory->create();
         $tablePrefix = SmartMigrationConfig::getArchiveTablePrefix();
         $columnPrefix = SmartMigrationConfig::getArchiveColumnPrefix();
 
