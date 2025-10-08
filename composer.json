@@ -1,7 +1,7 @@
 {
     "name": "marwen-brini/smart-migration",
-    "version": "0.3.0",
-    "description": "Safe Laravel migrations with automatic backups, rollback protection, and migration impact analysis",
+    "version": "1.0.0",
+    "description": "Production-ready Laravel migrations with auto-diff, drift detection, automatic backups, and safe rollback. 100% test coverage.",
     "keywords": [
         "Marwen-Brini",
         "laravel",
@@ -10,7 +10,13 @@
         "migrations",
         "safety",
         "rollback",
-        "backup"
+        "backup",
+        "auto-diff",
+        "drift-detection",
+        "schema-snapshots",
+        "mysql",
+        "postgresql",
+        "sqlite"
     ],
     "homepage": "https://github.com/marwen-brini/smart-migration",
     "license": "MIT",
