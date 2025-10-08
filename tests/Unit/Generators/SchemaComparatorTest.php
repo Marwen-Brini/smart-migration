@@ -3,7 +3,7 @@
 use Flux\Generators\SchemaComparator;
 
 beforeEach(function () {
-    $this->comparator = new SchemaComparator();
+    $this->comparator = new SchemaComparator;
 });
 
 it('detects new tables', function () {

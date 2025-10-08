@@ -3,7 +3,7 @@
 use Flux\Generators\MigrationBuilder;
 
 beforeEach(function () {
-    $this->builder = new MigrationBuilder();
+    $this->builder = new MigrationBuilder;
 });
 
 it('generates migration for new table', function () {
@@ -1026,4 +1026,3 @@ it('generates foreign key with no action on update', function () {
 
     expect($migration)->toContain('noActionOnUpdate()');
 });
-

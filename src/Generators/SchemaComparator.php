@@ -69,8 +69,8 @@ class SchemaComparator
 
             // Remove renamed columns from add/drop lists
             foreach ($renames as $rename) {
-                $columnsToAdd = array_filter($columnsToAdd, fn($col) => $col['name'] !== $rename['to']);
-                $columnsToDrop = array_filter($columnsToDrop, fn($col) => $col !== $rename['from']);
+                $columnsToAdd = array_filter($columnsToAdd, fn ($col) => $col['name'] !== $rename['to']);
+                $columnsToDrop = array_filter($columnsToDrop, fn ($col) => $col !== $rename['from']);
             }
 
             $tableModifications = [
@@ -246,7 +246,7 @@ class SchemaComparator
         foreach ($droppedColumns as $droppedName) {
             $droppedColumn = $sourceColumns[$droppedName] ?? null;
             // @codeCoverageIgnoreStart
-            if (!$droppedColumn) {
+            if (! $droppedColumn) {
                 continue;
             }
             // @codeCoverageIgnoreEnd

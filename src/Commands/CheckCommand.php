@@ -13,7 +13,8 @@ class CheckCommand extends Command
     protected $signature = 'migrate:check
                             {--snapshot : Compare against last snapshot}
                             {--fix : Generate migration to fix drift}
-                            {--details : Show detailed comparison}';
+                            {--details : Show detailed comparison}
+                            {--ignore-version-mismatch : Suppress snapshot format version warnings}';
 
     protected $description = 'Check for schema drift between migrations and actual database';
 
@@ -115,7 +116,18 @@ class CheckCommand extends Command
     {
         $snapshot = $this->snapshotManager->getLatest();
 
-        return $snapshot['schema'] ?? null;
+        if ($snapshot) {
+            // Check for format version mismatch
+            if (! $this->option('ignore-version-mismatch') && $this->snapshotManager->hasFormatVersionMismatch($snapshot)) {
+                $this->newLine();
+                $this->warn($this->snapshotManager->getFormatVersionWarning($snapshot));
+                $this->newLine();
+            }
+
+            return $snapshot['schema'] ?? null;
+        }
+
+        return null;
     }
 
     /**
@@ -139,6 +151,13 @@ class CheckCommand extends Command
 
             // This is a simplified version - in production, we'd parse each migration
             return $this->getCurrentDatabaseSchema();
+        }
+
+        // Check for format version mismatch
+        if (! $this->option('ignore-version-mismatch') && $this->snapshotManager->hasFormatVersionMismatch($snapshot)) {
+            $this->newLine();
+            $this->warn($this->snapshotManager->getFormatVersionWarning($snapshot));
+            $this->newLine();
         }
 
         return $snapshot['schema'] ?? null;

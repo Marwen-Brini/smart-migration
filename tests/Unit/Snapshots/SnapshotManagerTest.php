@@ -770,3 +770,127 @@ describe('restore method', function () {
             ->toThrow(\Exception::class, "Snapshot 'missing' not found");
     });
 });
+
+describe('format versioning', function () {
+    it('includes format_version in created snapshots', function () {
+        $snapPath = database_path('snapshots');
+
+        // Setup constructor File facade expectations
+        File::shouldReceive('exists')->with($snapPath)->andReturn(true);
+
+        // Create SnapshotManager instance
+        $manager = new SnapshotManager($this->mockFactory);
+
+        // Mock adapter calls for minimal schema
+        $this->mockAdapter->shouldReceive('getDriverName')->andReturn('mysql');
+        $this->mockAdapter->shouldReceive('getAllTables')->andReturn([]);
+
+        File::shouldReceive('put')->once()->andReturn(true);
+        File::shouldReceive('glob')->with($snapPath.'/*.json')->andReturn([]);
+
+        $snapshot = $manager->create('test_versioned');
+
+        expect($snapshot)->toHaveKey('format_version')
+            ->and($snapshot['format_version'])->toBe(SnapshotManager::CURRENT_FORMAT_VERSION);
+    });
+
+    it('detects version mismatch when format_version is missing', function () {
+        $snapPath = database_path('snapshots');
+
+        // Setup constructor File facade expectations
+        File::shouldReceive('exists')->with($snapPath)->andReturn(true);
+
+        // Create SnapshotManager instance
+        $manager = new SnapshotManager($this->mockFactory);
+
+        $oldSnapshot = [
+            'name' => 'old_snapshot',
+            'version' => 'abc123',
+            // No format_version field
+        ];
+
+        expect($manager->hasFormatVersionMismatch($oldSnapshot))->toBeTrue();
+    });
+
+    it('detects version mismatch when format_version differs', function () {
+        $snapPath = database_path('snapshots');
+
+        // Setup constructor File facade expectations
+        File::shouldReceive('exists')->with($snapPath)->andReturn(true);
+
+        // Create SnapshotManager instance
+        $manager = new SnapshotManager($this->mockFactory);
+
+        $oldSnapshot = [
+            'name' => 'old_snapshot',
+            'version' => 'abc123',
+            'format_version' => '0.9.0', // Old version
+        ];
+
+        expect($manager->hasFormatVersionMismatch($oldSnapshot))->toBeTrue();
+    });
+
+    it('returns false when format_version matches', function () {
+        $snapPath = database_path('snapshots');
+
+        // Setup constructor File facade expectations
+        File::shouldReceive('exists')->with($snapPath)->andReturn(true);
+
+        // Create SnapshotManager instance
+        $manager = new SnapshotManager($this->mockFactory);
+
+        $currentSnapshot = [
+            'name' => 'current_snapshot',
+            'version' => 'abc123',
+            'format_version' => SnapshotManager::CURRENT_FORMAT_VERSION,
+        ];
+
+        expect($manager->hasFormatVersionMismatch($currentSnapshot))->toBeFalse();
+    });
+
+    it('generates warning message for missing format_version', function () {
+        $snapPath = database_path('snapshots');
+
+        // Setup constructor File facade expectations
+        File::shouldReceive('exists')->with($snapPath)->andReturn(true);
+
+        // Create SnapshotManager instance
+        $manager = new SnapshotManager($this->mockFactory);
+
+        $oldSnapshot = [
+            'name' => 'old_snapshot',
+            'version' => 'abc123',
+            // No format_version
+        ];
+
+        $warning = $manager->getFormatVersionWarning($oldSnapshot);
+
+        expect($warning)->toContain('Warning: Snapshot format version mismatch!')
+            ->and($warning)->toContain('Snapshot version: unknown')
+            ->and($warning)->toContain('Current version: '.SnapshotManager::CURRENT_FORMAT_VERSION)
+            ->and($warning)->toContain('php artisan migrate:snapshot');
+    });
+
+    it('generates warning message for different format_version', function () {
+        $snapPath = database_path('snapshots');
+
+        // Setup constructor File facade expectations
+        File::shouldReceive('exists')->with($snapPath)->andReturn(true);
+
+        // Create SnapshotManager instance
+        $manager = new SnapshotManager($this->mockFactory);
+
+        $oldSnapshot = [
+            'name' => 'old_snapshot',
+            'version' => 'abc123',
+            'format_version' => '0.9.0',
+        ];
+
+        $warning = $manager->getFormatVersionWarning($oldSnapshot);
+
+        expect($warning)->toContain('Warning: Snapshot format version mismatch!')
+            ->and($warning)->toContain('Snapshot version: 0.9.0')
+            ->and($warning)->toContain('Current version: '.SnapshotManager::CURRENT_FORMAT_VERSION)
+            ->and($warning)->toContain('php artisan migrate:snapshot');
+    });
+});
