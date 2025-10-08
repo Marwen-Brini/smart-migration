@@ -39,6 +39,12 @@ beforeEach(function () {
     $factoryProperty = $reflection->getProperty('adapterFactory');
     $factoryProperty->setAccessible(true);
     $factoryProperty->setValue($this->command, $this->mockFactory);
+
+    // Mock the ignore-version-mismatch option by default
+    $this->command->shouldReceive('option')->with('ignore-version-mismatch')->andReturn(false)->byDefault();
+
+    // Mock format version mismatch check by default (no mismatch)
+    $this->mockSnapshotManager->shouldReceive('hasFormatVersionMismatch')->andReturn(false)->byDefault();
 });
 
 afterEach(function () {
@@ -246,6 +252,51 @@ describe('buildSchemaFromMigrations method', function () {
         $result = $this->command->buildSchemaFromMigrations();
 
         expect($result)->toEqual(['tables' => []]);
+    });
+
+    it('displays warning when snapshot has format version mismatch', function () {
+        $snapshot = [
+            'name' => 'old_snapshot',
+            'version' => '1.0',
+            'format_version' => '0.9.0', // Old version
+            'schema' => [
+                'tables' => ['users' => ['columns' => []]],
+            ],
+        ];
+
+        $this->mockSnapshotManager->shouldReceive('getLatest')->andReturn($snapshot);
+        $this->mockSnapshotManager->shouldReceive('hasFormatVersionMismatch')->with($snapshot)->andReturn(true);
+        $this->mockSnapshotManager->shouldReceive('getFormatVersionWarning')->with($snapshot)->andReturn('Version mismatch warning');
+
+        $this->command->shouldReceive('line')->with("<fg=gray>  Using snapshot: old_snapshot (v1.0)</>")->once();
+        $this->command->shouldReceive('newLine')->twice();
+        $this->command->shouldReceive('warn')->with('Version mismatch warning')->once();
+
+        $result = $this->command->buildSchemaFromMigrations();
+
+        expect($result)->toEqual($snapshot['schema']);
+    });
+
+    it('suppresses warning when --ignore-version-mismatch is used', function () {
+        $snapshot = [
+            'name' => 'old_snapshot',
+            'version' => '1.0',
+            'format_version' => '0.9.0',
+            'schema' => [
+                'tables' => ['users' => ['columns' => []]],
+            ],
+        ];
+
+        $this->command->shouldReceive('option')->with('ignore-version-mismatch')->andReturn(true);
+        $this->mockSnapshotManager->shouldReceive('getLatest')->andReturn($snapshot);
+        $this->command->shouldReceive('line')->with("<fg=gray>  Using snapshot: old_snapshot (v1.0)</>")->once();
+
+        // Should NOT call warn when flag is set
+        $this->command->shouldReceive('warn')->never();
+
+        $result = $this->command->buildSchemaFromMigrations();
+
+        expect($result)->toEqual($snapshot['schema']);
     });
 });
 

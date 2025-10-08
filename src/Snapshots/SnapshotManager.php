@@ -8,6 +8,12 @@ use Illuminate\Support\Facades\File;
 
 class SnapshotManager
 {
+    /**
+     * Current snapshot format version
+     * Increment when adapter improvements change the schema format
+     */
+    public const CURRENT_FORMAT_VERSION = '1.0.0';
+
     protected string $snapshotPath;
 
     protected string $format;
@@ -41,6 +47,7 @@ class SnapshotManager
         $snapshot = [
             'name' => $name,
             'version' => $version,
+            'format_version' => self::CURRENT_FORMAT_VERSION,
             'timestamp' => now()->toIso8601String(),
             'environment' => app()->environment(),
             'database' => [
@@ -331,5 +338,38 @@ class SnapshotManager
         }
 
         return $differences;
+    }
+
+    /**
+     * Check if snapshot has a format version mismatch
+     */
+    public function hasFormatVersionMismatch(array $snapshot): bool
+    {
+        // If snapshot doesn't have format_version, it's from an old version
+        if (! isset($snapshot['format_version'])) {
+            return true;
+        }
+
+        // Check if versions match
+        return $snapshot['format_version'] !== self::CURRENT_FORMAT_VERSION;
+    }
+
+    /**
+     * Get format version warning message
+     */
+    public function getFormatVersionWarning(array $snapshot): string
+    {
+        $snapshotVersion = $snapshot['format_version'] ?? 'unknown';
+        $currentVersion = self::CURRENT_FORMAT_VERSION;
+
+        return sprintf(
+            "Warning: Snapshot format version mismatch!\n".
+            "Snapshot version: %s\n".
+            "Current version: %s\n".
+            "This may cause false positives due to schema adapter improvements.\n".
+            "Consider recreating the snapshot with: php artisan migrate:snapshot",
+            $snapshotVersion,
+            $currentVersion
+        );
     }
 }

@@ -16,7 +16,8 @@ class DiffCommand extends BaseSmartMigrationCommand
                           {--name= : Custom migration name}
                           {--dry-run : Preview differences without generating migration}
                           {--force : Generate without confirmation}
-                          {--tables=* : Specific tables to check}';
+                          {--tables=* : Specific tables to check}
+                          {--ignore-version-mismatch : Suppress snapshot format version warnings}';
 
     protected $description = 'Auto-generate migration from database differences';
 
@@ -120,6 +121,13 @@ class DiffCommand extends BaseSmartMigrationCommand
 
         if ($snapshot) {
             $this->line("<fg=gray>  Using snapshot: {$snapshot['name']} (v{$snapshot['version']})</>");
+
+            // Check for format version mismatch
+            if (! $this->option('ignore-version-mismatch') && $this->snapshots->hasFormatVersionMismatch($snapshot)) {
+                $this->newLine();
+                $this->warn($this->snapshots->getFormatVersionWarning($snapshot));
+                $this->newLine();
+            }
 
             return $snapshot['schema'] ?? ['tables' => []];
         }
