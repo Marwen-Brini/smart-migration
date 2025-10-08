@@ -159,12 +159,14 @@ describe('getTableIndexes method', function () {
             'columns' => ['id'],
             'unique' => true,
             'primary' => true,
+            'type' => 'BTREE',
         ]);
         expect($result[1])->toEqual([
             'name' => 'users_email_unique',
             'columns' => ['email'],
             'unique' => true,
             'primary' => false,
+            'type' => 'BTREE',
         ]);
     });
 

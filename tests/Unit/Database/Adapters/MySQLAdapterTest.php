@@ -203,10 +203,10 @@ describe('getTableColumns method', function () {
 describe('getTableIndexes method', function () {
     it('returns index information grouped by index name', function () {
         $indexes = [
-            (object) ['Key_name' => 'PRIMARY', 'Column_name' => 'id', 'Non_unique' => '0'],
-            (object) ['Key_name' => 'email_index', 'Column_name' => 'email', 'Non_unique' => '1'],
-            (object) ['Key_name' => 'name_email_index', 'Column_name' => 'name', 'Non_unique' => '0'],
-            (object) ['Key_name' => 'name_email_index', 'Column_name' => 'email', 'Non_unique' => '0'],
+            (object) ['Key_name' => 'PRIMARY', 'Column_name' => 'id', 'Non_unique' => '0', 'Index_type' => 'BTREE'],
+            (object) ['Key_name' => 'email_index', 'Column_name' => 'email', 'Non_unique' => '1', 'Index_type' => 'BTREE'],
+            (object) ['Key_name' => 'name_email_index', 'Column_name' => 'name', 'Non_unique' => '0', 'Index_type' => 'BTREE'],
+            (object) ['Key_name' => 'name_email_index', 'Column_name' => 'email', 'Non_unique' => '0', 'Index_type' => 'BTREE'],
         ];
 
         DB::shouldReceive('select')->once()->with('SHOW INDEX FROM `users`')->andReturn($indexes);
@@ -219,12 +219,14 @@ describe('getTableIndexes method', function () {
             'columns' => ['id'],
             'unique' => true,
             'primary' => true,
+            'type' => 'BTREE',
         ]);
         expect($result[2])->toEqual([
             'name' => 'name_email_index',
             'columns' => ['name', 'email'],
             'unique' => true,
             'primary' => false,
+            'type' => 'BTREE',
         ]);
     });
 });
