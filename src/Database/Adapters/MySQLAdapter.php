@@ -119,9 +119,11 @@ class MySQLAdapter extends DatabaseAdapter
 
         $grouped = [];
         $uniqueStatus = [];
+        $indexTypes = [];
         foreach ($indexes as $index) {
             $grouped[$index->Key_name][] = $index->Column_name;
             $uniqueStatus[$index->Key_name] = $index->Non_unique == 0;
+            $indexTypes[$index->Key_name] = strtoupper($index->Index_type ?? 'BTREE');
         }
 
         $result = [];
@@ -131,6 +133,7 @@ class MySQLAdapter extends DatabaseAdapter
                 'columns' => $columns,
                 'unique' => $uniqueStatus[$name],
                 'primary' => $name === 'PRIMARY',
+                'type' => $indexTypes[$name],
             ];
         }
 

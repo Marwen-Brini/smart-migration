@@ -6,6 +6,7 @@ use Flux\Cleanup\ArchiveCleanupService;
 use Flux\Commands\CheckCommand;
 use Flux\Commands\CleanupCommand;
 use Flux\Commands\ConfigCommand;
+use Flux\Commands\DiffCommand;
 use Flux\Commands\FluxCommand;
 use Flux\Commands\PlanCommand;
 use Flux\Commands\SafeCommand;
@@ -89,6 +90,7 @@ class FluxServiceProvider extends PackageServiceProvider
             ->hasCommand(ConfigCommand::class)
             ->hasCommand(CheckCommand::class)
             ->hasCommand(SnapshotCommand::class)
-            ->hasCommand(CleanupCommand::class);
+            ->hasCommand(CleanupCommand::class)
+            ->hasCommand(DiffCommand::class);
     }
 }
