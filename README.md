@@ -1,9 +1,11 @@
 # 🛡️ Smart Migration Package for Laravel
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/marwen-brini/smart-migration.svg?style=flat-square)](https://packagist.org/packages/marwen-brini/smart-migration)
-[![Total Downloads](https://img.shields.io/packagist/dt/marwen-brini/smart-migration.svg?style=flat-square)](https://packagist.org/packages/marwen-brini/smart-migration)
+[![Latest Version](https://img.shields.io/badge/version-v1.0.0-blue?style=flat-square)](https://github.com/marwen-brini/smart-migration)
+[![PHP Version](https://img.shields.io/badge/php-8.3%20|%208.4-777BB4?style=flat-square&logo=php)](https://github.com/marwen-brini/smart-migration)
+[![Laravel](https://img.shields.io/badge/laravel-11%20|%2012-FF2D20?style=flat-square&logo=laravel)](https://github.com/marwen-brini/smart-migration)
 [![Tests](https://img.shields.io/badge/tests-592%20passing-brightgreen?style=flat-square)](https://github.com/marwen-brini/smart-migration)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen?style=flat-square)](https://github.com/marwen-brini/smart-migration)
+[![License](https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square)](LICENSE.md)
 
 **Never fear migrations again!** Smart Migration provides safety, visibility, and confidence when running Laravel migrations. Preview changes before they happen, automatically backup data, and rollback without data loss.
 
@@ -57,18 +59,20 @@ You can publish the config file with:
 php artisan vendor:publish --tag="smart-migration-config"
 ```
 
-This is the contents of the published config file:
+The config file includes comprehensive settings for:
 
-```php
-return [
-];
-```
+- **Safety Features**: Auto-backup, safe rollback, confirmation requirements
+- **Backup Settings**: Storage path, retention, compression options
+- **Archive Configuration**: Retention periods, naming conventions
+- **Snapshot Management**: Storage, format (json/yaml/php), rotation
+- **Drift Detection**: Ignored tables/columns patterns
+- **Risk Assessment**: Customizable operation classifications
+- **Display Options**: Verbosity, emojis, progress bars
+- **Database Drivers**: Driver-specific settings (MySQL, PostgreSQL, SQLite)
+- **Notifications**: Slack, webhooks, email configuration
+- **Performance**: Chunk sizes, timeout settings
 
-Optionally, you can publish the views using
-
-```bash
-php artisan vendor:publish --tag="smart-migration-views"
-```
+View the [full configuration file](config/smart-migration.php) for all available options.
 
 ## 🚀 Quick Start
 
