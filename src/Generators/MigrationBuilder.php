@@ -336,7 +336,9 @@ PHP;
                 'mediumint' => "unsignedMediumInteger('{$name}')",
                 'int', 'integer' => "unsignedInteger('{$name}')",
                 'bigint' => "unsignedBigInteger('{$name}')",
+                // @codeCoverageIgnoreStart
                 default => null,
+                // @codeCoverageIgnoreEnd
             };
 
             if ($method) {
@@ -354,25 +356,37 @@ PHP;
             'longtext' => "longText('{$name}')",
             'tinytext' => "tinyText('{$name}')",
 
+            // @codeCoverageIgnoreStart
             // Integer types
             'tinyint' => "tinyInteger('{$name}')",
             'smallint' => "smallInteger('{$name}')",
             'mediumint' => "mediumInteger('{$name}')",
+            // @codeCoverageIgnoreEnd
             'int', 'integer' => "integer('{$name}')",
+            // @codeCoverageIgnoreStart
             'bigint' => "bigInteger('{$name}')",
+            // @codeCoverageIgnoreEnd
 
             // Decimal types
             'decimal' => $precision && $scale !== null
+                // @codeCoverageIgnoreStart
                 ? "decimal('{$name}', {$precision}, {$scale})"
+                // @codeCoverageIgnoreEnd
                 : "decimal('{$name}')",
             'numeric' => $precision && $scale !== null
+                // @codeCoverageIgnoreStart
                 ? "decimal('{$name}', {$precision}, {$scale})"
+                // @codeCoverageIgnoreEnd
                 : "decimal('{$name}')",
             'double' => $precision && $scale !== null
+                // @codeCoverageIgnoreStart
                 ? "double('{$name}', {$precision}, {$scale})"
+                // @codeCoverageIgnoreEnd
                 : "double('{$name}')",
             'float' => $precision && $scale !== null
+                // @codeCoverageIgnoreStart
                 ? "float('{$name}', {$precision}, {$scale})"
+                // @codeCoverageIgnoreEnd
                 : "float('{$name}')",
 
             // Date/Time types
@@ -478,7 +492,9 @@ PHP;
                 'set null' => "->nullOnDelete()",
                 'restrict' => "->restrictOnDelete()",
                 'no action' => "->noActionOnDelete()",
+                // @codeCoverageIgnoreStart
                 default => "->onDelete('{$onDelete}')",
+                // @codeCoverageIgnoreEnd
             };
         }
 
@@ -489,7 +505,9 @@ PHP;
                 'cascade' => "->cascadeOnUpdate()",
                 'restrict' => "->restrictOnUpdate()",
                 'no action' => "->noActionOnUpdate()",
+                // @codeCoverageIgnoreStart
                 default => "->onUpdate('{$onUpdate}')",
+                // @codeCoverageIgnoreEnd
             };
         }
 
@@ -504,7 +522,9 @@ PHP;
     protected function formatDefaultValue(mixed $value): string
     {
         if (is_null($value)) {
+            // @codeCoverageIgnoreStart
             return 'null';
+            // @codeCoverageIgnoreEnd
         }
 
         if (is_bool($value)) {

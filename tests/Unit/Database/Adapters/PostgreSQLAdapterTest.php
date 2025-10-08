@@ -125,6 +125,38 @@ describe('getTableColumns method', function () {
 
         expect($result[0]['type'])->toBe('timestamp');
     });
+
+    it('handles numeric and decimal columns with precision and scale', function () {
+        $mockColumns = [
+            (object) [
+                'column_name' => 'price',
+                'data_type' => 'numeric',
+                'character_maximum_length' => null,
+                'numeric_precision' => 10,
+                'numeric_scale' => 2,
+                'is_nullable' => 'YES',
+                'column_default' => null,
+            ],
+            (object) [
+                'column_name' => 'amount',
+                'data_type' => 'decimal',
+                'character_maximum_length' => null,
+                'numeric_precision' => 15,
+                'numeric_scale' => 4,
+                'is_nullable' => 'NO',
+                'column_default' => '0',
+            ],
+        ];
+
+        DB::shouldReceive('select')
+            ->once()
+            ->andReturn($mockColumns);
+
+        $result = $this->adapter->getTableColumns('products');
+
+        expect($result[0]['type'])->toBe('numeric(10,2)');
+        expect($result[1]['type'])->toBe('decimal(15,4)');
+    });
 });
 
 describe('getTableIndexes method', function () {

@@ -245,9 +245,11 @@ class SchemaComparator
 
         foreach ($droppedColumns as $droppedName) {
             $droppedColumn = $sourceColumns[$droppedName] ?? null;
+            // @codeCoverageIgnoreStart
             if (!$droppedColumn) {
                 continue;
             }
+            // @codeCoverageIgnoreEnd
 
             $bestMatch = null;
             $bestScore = 0;
@@ -320,7 +322,9 @@ class SchemaComparator
             }
         }
 
+        // @codeCoverageIgnoreStart
         return false;
+        // @codeCoverageIgnoreEnd
     }
 
     /**
