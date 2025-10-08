@@ -158,6 +158,7 @@ class SQLiteAdapter extends DatabaseAdapter
                 'columns' => $columnNames,
                 'unique' => $index->unique == 1,
                 'primary' => strpos($index->name, 'sqlite_autoindex') === 0,
+                'type' => 'BTREE', // SQLite doesn't explicitly store index type, defaults to BTREE
             ];
         }
 

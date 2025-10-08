@@ -113,6 +113,8 @@ class PostgreSQLAdapter extends DatabaseAdapter
                 column_name,
                 data_type,
                 character_maximum_length,
+                numeric_precision,
+                numeric_scale,
                 is_nullable,
                 column_default
             FROM information_schema.columns
@@ -123,15 +125,33 @@ class PostgreSQLAdapter extends DatabaseAdapter
 
         return array_map(function ($column) {
             $type = $column->data_type;
+
+            // Add length for character types
             if ($column->character_maximum_length) {
                 $type .= "({$column->character_maximum_length})";
+            }
+
+            // Add precision and scale for numeric types
+            if (in_array($column->data_type, ['numeric', 'decimal']) && $column->numeric_precision && $column->numeric_scale !== null) {
+                $type .= "({$column->numeric_precision},{$column->numeric_scale})";
+            }
+
+            // Detect auto-increment (SERIAL, BIGSERIAL, etc.)
+            $autoIncrement = false;
+            $default = $column->column_default;
+            if ($default && preg_match('/nextval\(/i', $default)) {
+                $autoIncrement = true;
+                // Remove the nextval default for auto-increment columns
+                $default = null;
             }
 
             return [
                 'name' => $column->column_name,
                 'type' => $type,
                 'nullable' => $column->is_nullable === 'YES',
-                'default' => $column->column_default,
+                'default' => $default,
+                'auto_increment' => $autoIncrement,
+                'unsigned' => false, // PostgreSQL doesn't have unsigned types
                 'key' => '',
                 'extra' => '',
             ];
@@ -148,10 +168,12 @@ class PostgreSQLAdapter extends DatabaseAdapter
                 i.relname as index_name,
                 a.attname as column_name,
                 ix.indisprimary as is_primary,
-                ix.indisunique as is_unique
+                ix.indisunique as is_unique,
+                am.amname as index_type
             FROM pg_class t
             JOIN pg_index ix ON t.oid = ix.indrelid
             JOIN pg_class i ON i.oid = ix.indexrelid
+            JOIN pg_am am ON i.relam = am.oid
             JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(ix.indkey)
             WHERE t.relkind = 'r'
                 AND t.relname = ?
@@ -166,6 +188,7 @@ class PostgreSQLAdapter extends DatabaseAdapter
                     'columns' => [],
                     'unique' => $index->is_unique,
                     'primary' => $index->is_primary,
+                    'type' => strtoupper($index->index_type ?? 'BTREE'),
                 ];
             }
             $grouped[$index->index_name]['columns'][] = $index->column_name;
