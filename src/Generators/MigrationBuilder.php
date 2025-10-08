@@ -96,19 +96,21 @@ class MigrationBuilder
         foreach ($columnsList as $column) {
             // Skip created_at and updated_at if we're using timestamps()
             if ($hasTimestamps && in_array($column['name'], ['created_at', 'updated_at'])) {
-                if (!in_array('timestamps', $processedColumns)) {
-                    $columns[] = self::DOUBLE_INDENT . '$table->timestamps();';
+                if (! in_array('timestamps', $processedColumns)) {
+                    $columns[] = self::DOUBLE_INDENT.'$table->timestamps();';
                     $processedColumns[] = 'timestamps';
                 }
+
                 continue;
             }
 
             // Skip deleted_at if we're using softDeletes()
             if ($hasSoftDeletes && $column['name'] === 'deleted_at') {
-                if (!in_array('softDeletes', $processedColumns)) {
-                    $columns[] = self::DOUBLE_INDENT . '$table->softDeletes();';
+                if (! in_array('softDeletes', $processedColumns)) {
+                    $columns[] = self::DOUBLE_INDENT.'$table->softDeletes();';
                     $processedColumns[] = 'softDeletes';
                 }
+
                 continue;
             }
 
@@ -413,10 +415,10 @@ PHP;
 
             // Enum and Set
             'enum' => ! empty($enumValues)
-                ? "enum('{$name}', ['" . implode("', '", $enumValues) . "'])"
+                ? "enum('{$name}', ['".implode("', '", $enumValues)."'])"
                 : "string('{$name}')",
             'set' => ! empty($enumValues)
-                ? "set('{$name}', ['" . implode("', '", $enumValues) . "'])"
+                ? "set('{$name}', ['".implode("', '", $enumValues)."'])"
                 : "string('{$name}')",
 
             // Default fallback
@@ -488,10 +490,10 @@ PHP;
         if (isset($foreignKey['on_delete'])) {
             $onDelete = strtolower($foreignKey['on_delete']);
             $definition .= match ($onDelete) {
-                'cascade' => "->cascadeOnDelete()",
-                'set null' => "->nullOnDelete()",
-                'restrict' => "->restrictOnDelete()",
-                'no action' => "->noActionOnDelete()",
+                'cascade' => '->cascadeOnDelete()',
+                'set null' => '->nullOnDelete()',
+                'restrict' => '->restrictOnDelete()',
+                'no action' => '->noActionOnDelete()',
                 // @codeCoverageIgnoreStart
                 default => "->onDelete('{$onDelete}')",
                 // @codeCoverageIgnoreEnd
@@ -502,9 +504,9 @@ PHP;
         if (isset($foreignKey['on_update'])) {
             $onUpdate = strtolower($foreignKey['on_update']);
             $definition .= match ($onUpdate) {
-                'cascade' => "->cascadeOnUpdate()",
-                'restrict' => "->restrictOnUpdate()",
-                'no action' => "->noActionOnUpdate()",
+                'cascade' => '->cascadeOnUpdate()',
+                'restrict' => '->restrictOnUpdate()',
+                'no action' => '->noActionOnUpdate()',
                 // @codeCoverageIgnoreStart
                 default => "->onUpdate('{$onUpdate}')",
                 // @codeCoverageIgnoreEnd

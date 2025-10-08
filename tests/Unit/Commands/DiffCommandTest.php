@@ -235,7 +235,7 @@ describe('buildSchemaFromMigrations method', function () {
 
         $this->mockSnapshotManager->shouldReceive('getLatest')->andReturn($snapshot);
         $this->command->shouldReceive('line')
-            ->with("<fg=gray>  Using snapshot: test_snapshot (v1.0)</>")
+            ->with('<fg=gray>  Using snapshot: test_snapshot (v1.0)</>')
             ->once();
 
         $result = $this->command->buildSchemaFromMigrations();
@@ -268,7 +268,7 @@ describe('buildSchemaFromMigrations method', function () {
         $this->mockSnapshotManager->shouldReceive('hasFormatVersionMismatch')->with($snapshot)->andReturn(true);
         $this->mockSnapshotManager->shouldReceive('getFormatVersionWarning')->with($snapshot)->andReturn('Version mismatch warning');
 
-        $this->command->shouldReceive('line')->with("<fg=gray>  Using snapshot: old_snapshot (v1.0)</>")->once();
+        $this->command->shouldReceive('line')->with('<fg=gray>  Using snapshot: old_snapshot (v1.0)</>')->once();
         $this->command->shouldReceive('newLine')->twice();
         $this->command->shouldReceive('warn')->with('Version mismatch warning')->once();
 
@@ -289,7 +289,7 @@ describe('buildSchemaFromMigrations method', function () {
 
         $this->command->shouldReceive('option')->with('ignore-version-mismatch')->andReturn(true);
         $this->mockSnapshotManager->shouldReceive('getLatest')->andReturn($snapshot);
-        $this->command->shouldReceive('line')->with("<fg=gray>  Using snapshot: old_snapshot (v1.0)</>")->once();
+        $this->command->shouldReceive('line')->with('<fg=gray>  Using snapshot: old_snapshot (v1.0)</>')->once();
 
         // Should NOT call warn when flag is set
         $this->command->shouldReceive('warn')->never();

@@ -7,7 +7,6 @@ use Flux\Generators\MigrationBuilder;
 use Flux\Generators\SchemaComparator;
 use Flux\Snapshots\SnapshotManager;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
 class DiffCommand extends BaseSmartMigrationCommand

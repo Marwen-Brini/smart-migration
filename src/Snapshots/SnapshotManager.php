@@ -367,7 +367,7 @@ class SnapshotManager
             "Snapshot version: %s\n".
             "Current version: %s\n".
             "This may cause false positives due to schema adapter improvements.\n".
-            "Consider recreating the snapshot with: php artisan migrate:snapshot",
+            'Consider recreating the snapshot with: php artisan migrate:snapshot',
             $snapshotVersion,
             $currentVersion
         );
