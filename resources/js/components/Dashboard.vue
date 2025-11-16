@@ -78,6 +78,11 @@
         <div v-else-if="activeView === 'history'" class="p-8">
           <migration-timeline :history="history" />
         </div>
+
+        <!-- Performance View -->
+        <div v-else-if="activeView === 'performance'" class="p-8">
+          <performance-view />
+        </div>
       </div>
     </template>
   </dashboard-layout>
@@ -98,6 +103,7 @@ import { downloadJSON, downloadCSV, downloadHTMLReport } from '../utils/exporter
 import api from '../utils/api';
 import DashboardLayout from './DashboardLayout.vue';
 import OverviewView from './views/OverviewView.vue';
+import PerformanceView from './views/PerformanceView.vue';
 import MigrationStatus from './MigrationStatus.vue';
 import MigrationTimeline from './MigrationTimeline.vue';
 import SchemaExplorer from './SchemaExplorer.vue';

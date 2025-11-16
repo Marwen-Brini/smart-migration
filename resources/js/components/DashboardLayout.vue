@@ -200,6 +200,12 @@ const navItems = computed(() => [
     icon: '📜',
     badge: null,
   },
+  {
+    id: 'performance',
+    label: 'Performance',
+    icon: '⚡',
+    badge: null,
+  },
 ]);
 
 const viewDetails = {
@@ -230,6 +236,10 @@ const viewDetails = {
   history: {
     title: 'Migration History',
     description: 'View past migration executions',
+  },
+  performance: {
+    title: 'Performance Monitoring',
+    description: 'Track migration performance metrics and anomalies',
   },
 };
 
