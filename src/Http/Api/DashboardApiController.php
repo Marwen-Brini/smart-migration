@@ -12,6 +12,7 @@ use Flux\Dashboard\DashboardService;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Artisan;
 
 class DashboardApiController extends Controller
 {
@@ -449,6 +450,42 @@ class DashboardApiController extends Controller
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
                 ]
+            ], 500);
+        }
+    }
+
+    /**
+     * Detect migration conflicts
+     */
+    public function detectConflicts(): JsonResponse
+    {
+        try {
+            // Call the conflicts command with JSON output
+            Artisan::call('migrate:conflicts', ['--json' => true]);
+
+            $output = Artisan::output();
+            $result = json_decode($output, true);
+
+            if ($result === null) {
+                // If JSON parsing fails, run without JSON to get conflicts
+                Artisan::call('migrate:conflicts');
+
+                return response()->json([
+                    'success' => true,
+                    'conflicts' => [],
+                    'message' => 'No conflicts detected'
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'conflicts' => $result['conflicts'] ?? [],
+                'total' => count($result['conflicts'] ?? []),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
             ], 500);
         }
     }

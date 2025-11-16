@@ -206,6 +206,12 @@ const navItems = computed(() => [
     icon: '⚡',
     badge: null,
   },
+  {
+    id: 'conflicts',
+    label: 'Conflicts',
+    icon: '⚠️',
+    badge: null,
+  },
 ]);
 
 const viewDetails = {
@@ -240,6 +246,10 @@ const viewDetails = {
   performance: {
     title: 'Performance Monitoring',
     description: 'Track migration performance metrics and anomalies',
+  },
+  conflicts: {
+    title: 'Migration Conflicts',
+    description: 'Detect and resolve migration conflicts',
   },
 };
 

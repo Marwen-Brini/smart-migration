@@ -83,6 +83,11 @@
         <div v-else-if="activeView === 'performance'" class="p-8">
           <performance-view />
         </div>
+
+        <!-- Conflicts View -->
+        <div v-else-if="activeView === 'conflicts'" class="p-8">
+          <conflicts-view />
+        </div>
       </div>
     </template>
   </dashboard-layout>
@@ -104,6 +109,7 @@ import api from '../utils/api';
 import DashboardLayout from './DashboardLayout.vue';
 import OverviewView from './views/OverviewView.vue';
 import PerformanceView from './views/PerformanceView.vue';
+import ConflictsView from './views/ConflictsView.vue';
 import MigrationStatus from './MigrationStatus.vue';
 import MigrationTimeline from './MigrationTimeline.vue';
 import SchemaExplorer from './SchemaExplorer.vue';
