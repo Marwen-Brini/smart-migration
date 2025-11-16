@@ -29,6 +29,12 @@ class HistoryCommand extends Command
         // Combine and sort
         $allMigrations = $this->combineAndSortMigrations($appliedMigrations, $pendingMigrations);
 
+        // Apply limit to final combined list
+        $limit = $this->option('limit');
+        if ($limit && count($allMigrations) > $limit) {
+            $allMigrations = array_slice($allMigrations, 0, $limit);
+        }
+
         if ($this->option('json')) {
             $this->outputJson($allMigrations);
             return self::SUCCESS;
@@ -66,7 +72,6 @@ class HistoryCommand extends Command
 
             $migrations = DB::table($tableName)
                 ->orderBy('id', $this->option('reverse') ? 'asc' : 'desc')
-                ->limit($this->option('limit'))
                 ->get()
                 ->map(function ($migration) {
                     return [
