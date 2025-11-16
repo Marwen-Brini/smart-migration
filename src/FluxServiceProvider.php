@@ -8,6 +8,7 @@ use Flux\Commands\CleanupCommand;
 use Flux\Commands\ConfigCommand;
 use Flux\Commands\ConflictsCommand;
 use Flux\Commands\DiffCommand;
+use Flux\Commands\EmergencyRollbackCommand;
 use Flux\Commands\FluxCommand;
 use Flux\Commands\HistoryCommand;
 use Flux\Commands\PlanCommand;
@@ -113,6 +114,7 @@ class FluxServiceProvider extends PackageServiceProvider
             ->hasCommand(HistoryCommand::class)
             ->hasCommand(TestCommand::class)
             ->hasCommand(ConflictsCommand::class)
+            ->hasCommand(EmergencyRollbackCommand::class)
             ->hasCommand(UICommand::class);
     }
 }
