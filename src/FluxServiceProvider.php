@@ -3,6 +3,7 @@
 namespace Flux;
 
 use Flux\Cleanup\ArchiveCleanupService;
+use Flux\Commands\BaselineCommand;
 use Flux\Commands\CheckCommand;
 use Flux\Commands\CleanupCommand;
 use Flux\Commands\ConfigCommand;
@@ -22,6 +23,8 @@ use Flux\Dashboard\DashboardService;
 use Flux\Database\DatabaseAdapterFactory;
 use Flux\Database\DatabaseAdapterFactoryInterface;
 use Flux\Jobs\ArchiveCleanupJob;
+use Flux\Monitoring\AnomalyDetector;
+use Flux\Monitoring\PerformanceBaseline;
 use Flux\Snapshots\SnapshotManager;
 use Illuminate\Console\Scheduling\Schedule;
 use Spatie\LaravelPackageTools\Package;
@@ -60,6 +63,15 @@ class FluxServiceProvider extends PackageServiceProvider
                 $app->make(DatabaseAdapterFactoryInterface::class),
                 $app->make(SnapshotManager::class),
                 $app->make(\Flux\Generators\SchemaComparator::class)
+            );
+        });
+
+        // Register performance monitoring services
+        $this->app->singleton(PerformanceBaseline::class);
+
+        $this->app->singleton(AnomalyDetector::class, function ($app) {
+            return new AnomalyDetector(
+                $app->make(PerformanceBaseline::class)
             );
         });
     }
@@ -115,6 +127,7 @@ class FluxServiceProvider extends PackageServiceProvider
             ->hasCommand(TestCommand::class)
             ->hasCommand(ConflictsCommand::class)
             ->hasCommand(EmergencyRollbackCommand::class)
+            ->hasCommand(BaselineCommand::class)
             ->hasCommand(UICommand::class);
     }
 }

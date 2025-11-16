@@ -5,6 +5,8 @@ namespace Flux\Safety;
 use Flux\Config\SmartMigrationConfig;
 use Flux\Database\DatabaseAdapter;
 use Flux\Database\DatabaseAdapterFactoryInterface;
+use Flux\Monitoring\AnomalyDetector;
+use Flux\Monitoring\PerformanceBaseline;
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -19,6 +21,10 @@ class SafeMigrator extends Migrator
     protected ?DatabaseAdapter $adapter = null;
 
     protected ?DatabaseAdapterFactoryInterface $adapterFactory = null;
+
+    protected ?PerformanceBaseline $performanceBaseline = null;
+
+    protected ?AnomalyDetector $anomalyDetector = null;
 
     /**
      * Set the adapter factory (for dependency injection)
@@ -70,6 +76,12 @@ class SafeMigrator extends Migrator
 
         $this->write("<comment>🔄 Migrating (SAFE):</comment> <info>{$name}</info>");
 
+        // Start performance tracking
+        $startTime = microtime(true);
+        $startMemory = memory_get_usage() / 1024 / 1024; // MB
+        DB::enableQueryLog();
+        $initialQueryCount = count(DB::getQueryLog());
+
         try {
             // Analyze and backup affected tables
             $this->analyzeAndBackup($file);
@@ -79,6 +91,18 @@ class SafeMigrator extends Migrator
 
             // Record migration in database
             $this->repository->log($name, $batch);
+
+            // Collect performance metrics
+            $durationMs = (microtime(true) - $startTime) * 1000;
+            $memoryUsed = (memory_get_usage() / 1024 / 1024) - $startMemory;
+            $queryCount = count(DB::getQueryLog()) - $initialQueryCount;
+
+            // Record performance baseline
+            $this->recordPerformance($name, [
+                'duration_ms' => $durationMs,
+                'memory_mb' => $memoryUsed,
+                'query_count' => $queryCount,
+            ]);
 
             $this->write("<info>✅ Migrated (SAFE):</info>  <comment>{$name}</comment>");
 
@@ -332,5 +356,51 @@ class SafeMigrator extends Migrator
         $class = $this->getMigrationClass(Str::studly(implode('_', array_slice(explode('_', basename($file, '.php')), 4))));
 
         return new $class;
+    }
+
+    /**
+     * Record performance metrics and check for anomalies
+     */
+    protected function recordPerformance(string $migration, array $metrics): void
+    {
+        try {
+            // Get or create performance baseline instance
+            if ($this->performanceBaseline === null) {
+                $this->performanceBaseline = app(PerformanceBaseline::class);
+            }
+
+            if ($this->anomalyDetector === null) {
+                $this->anomalyDetector = app(AnomalyDetector::class);
+            }
+
+            // Check for anomalies before recording
+            $anomalyResult = $this->anomalyDetector->detect($migration, $metrics);
+
+            // Record the metrics in baseline
+            $this->performanceBaseline->record($migration, $metrics);
+
+            // Warn if anomalies detected
+            if ($anomalyResult['has_anomalies']) {
+                $this->write("<comment>⚠️  Performance anomalies detected:</comment>");
+
+                foreach ($anomalyResult['anomalies'] as $anomaly) {
+                    $severityColor = match($anomaly['severity']) {
+                        'critical' => 'error',
+                        'high' => 'error',
+                        'medium' => 'comment',
+                        default => 'info',
+                    };
+
+                    $this->write("<{$severityColor}>  [{$anomaly['severity']}] {$anomaly['message']}</{$severityColor}>");
+                }
+            }
+
+        } catch (\Exception $e) {
+            // Don't fail the migration if performance tracking fails
+            // Just log it silently or optionally warn
+            if (config('smart-migration.monitoring.verbose_errors', false)) {
+                $this->write("<comment>Performance tracking error: {$e->getMessage()}</comment>");
+            }
+        }
     }
 }
