@@ -176,11 +176,11 @@ class TestCommand extends Command
         if ($specific = $this->argument('migration')) {
             // Test specific migration
             $files = $migrator->getMigrationFiles($path);
-            $migration = collect($files)->first(function ($file, $name) use ($specific) {
+            $matchedKey = collect($files)->keys()->first(function ($name) use ($specific) {
                 return str_contains($name, $specific);
             });
 
-            return $migration ? [$migration] : [];
+            return $matchedKey ? [$matchedKey] : [];
         }
 
         // Test all pending migrations
@@ -207,13 +207,42 @@ class TestCommand extends Command
 
             // Run migration
             $this->info('  ▸ Running up() migration...');
-            Artisan::call('migrate', [
+
+            // For specific migrations, we need to ensure ONLY that migration runs
+            // Copy it to a temp directory
+            $tempDir = storage_path('framework/testing/migrations');
+            if (!\Illuminate\Support\Facades\File::exists($tempDir)) {
+                \Illuminate\Support\Facades\File::makeDirectory($tempDir, 0755, true);
+            }
+
+            // Clean temp directory
+            \Illuminate\Support\Facades\File::cleanDirectory($tempDir);
+
+            // Copy the specific migration
+            $sourcePath = $this->option('path') ?: database_path('migrations');
+            $migrator = app('migrator');
+            $files = $migrator->getMigrationFiles($sourcePath);
+
+            if (!isset($files[$migration])) {
+                throw new \RuntimeException("Migration not found: {$migration}");
+            }
+
+            // $files[$migration] is already the full file path
+            $sourceFile = $files[$migration];
+            $destFile = $tempDir . '/' . basename($sourceFile);
+            \Illuminate\Support\Facades\File::copy($sourceFile, $destFile);
+
+            // Run from temp directory
+            $exitCode = Artisan::call('migrate', [
                 '--database' => $this->testConnection,
-                '--path' => $this->option('path') ?: 'database/migrations',
+                '--path' => 'storage/framework/testing/migrations',
                 '--force' => true,
             ]);
 
             $output = Artisan::output();
+
+            // Clean up temp directory
+            \Illuminate\Support\Facades\File::deleteDirectory($tempDir);
 
             // Check for errors in output
             if (str_contains($output, 'Error') || str_contains($output, 'Exception')) {
