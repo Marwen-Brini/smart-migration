@@ -489,4 +489,76 @@ class DashboardApiController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Test migration on temporary database
+     */
+    public function testMigration(): JsonResponse
+    {
+        try {
+            $migration = request()->input('migration');
+            $withData = request()->input('with_data', false);
+            $testRollback = request()->input('test_rollback', true);
+
+            if (!$migration) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Migration name is required'
+                ], 400);
+            }
+
+            // Build command options
+            $options = [
+                'migration' => $migration,
+            ];
+
+            if ($withData) {
+                $options['--with-data'] = true;
+            }
+
+            if ($testRollback) {
+                $options['--rollback'] = true;
+            }
+
+            // Run the command and capture output
+            $exitCode = Artisan::call('migrate:test', $options);
+            $output = Artisan::output();
+
+            $success = $exitCode === 0 && (
+                strpos($output, 'All tests passed') !== false ||
+                strpos($output, 'Migration passed') !== false
+            );
+
+            // Parse output for structured data
+            $tablesAdded = [];
+            $columnsAdded = [];
+            $duration = null;
+
+            if (preg_match('/Migration passed \((\d+\.?\d*)ms\)/', $output, $matches)) {
+                $duration = (float)$matches[1];
+            }
+
+            if (preg_match('/Tables added: (.+)/', $output, $matches)) {
+                $tablesAdded = array_map('trim', explode(',', $matches[1]));
+            }
+
+            return response()->json([
+                'success' => $success,
+                'message' => $success ? 'Migration test passed!' : 'Migration test failed',
+                'migration' => $migration,
+                'duration_ms' => $duration,
+                'tables_added' => $tablesAdded,
+                'columns_added' => $columnsAdded,
+                'output' => $output,
+                'tested_rollback' => $testRollback,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'output' => Artisan::output(),
+            ], 500);
+        }
+    }
 }

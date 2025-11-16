@@ -46,6 +46,12 @@
               👁 Preview
             </button>
             <button
+              @click="handleTest(migration)"
+              class="btn btn-secondary text-xs"
+            >
+              🧪 Test
+            </button>
+            <button
               @click="handleRunSafe(migration)"
               :disabled="isRunning"
               class="btn text-xs bg-green-600 text-white hover:bg-green-700 border-green-600"
@@ -117,6 +123,14 @@
     @complete="handleSafeRollbackComplete"
     @error="handleSafeRollbackError"
   />
+
+  <!-- Test Migration Modal -->
+  <test-migration-modal
+    :is-open="showTestModal"
+    :migration-name="selectedMigration"
+    @close="closeTest"
+    @run-migration="handleRunFromTest"
+  />
 </template>
 
 <script setup>
@@ -127,6 +141,7 @@ import api from '../utils/api';
 import MigrationPreviewModal from './MigrationPreviewModal.vue';
 import SafeMigrationModal from './SafeMigrationModal.vue';
 import SafeRollbackModal from './SafeRollbackModal.vue';
+import TestMigrationModal from './TestMigrationModal.vue';
 
 const props = defineProps({
   migrations: {
@@ -143,6 +158,7 @@ const isRollingBack = ref(false);
 const showPreviewModal = ref(false);
 const showSafeMigrationModal = ref(false);
 const showSafeRollbackModal = ref(false);
+const showTestModal = ref(false);
 const selectedMigration = ref(null);
 
 const pending = computed(() => {
@@ -313,5 +329,24 @@ function handleSafeRollbackComplete(data) {
 function handleSafeRollbackError(err) {
   error(`Rollback failed: ${err.message}`);
   // Modal stays open to show error details
+}
+
+function handleTest(migration) {
+  selectedMigration.value = migration.name;
+  showTestModal.value = true;
+}
+
+function closeTest() {
+  showTestModal.value = false;
+  selectedMigration.value = null;
+}
+
+async function handleRunFromTest(migrationName) {
+  closeTest();
+
+  const migration = pending.value.find(m => m.name === migrationName);
+  if (migration) {
+    handleRunSafe(migration);
+  }
 }
 </script>
