@@ -1,6 +1,6 @@
 # 🛡️ Smart Migration Package for Laravel
 
-[![Latest Version](https://img.shields.io/badge/version-v1.0.0-blue?style=flat-square)](https://github.com/marwen-brini/smart-migration)
+[![Latest Version](https://img.shields.io/badge/version-v2.0.0--dev-blue?style=flat-square)](https://github.com/marwen-brini/smart-migration)
 [![PHP Version](https://img.shields.io/badge/php-8.3%20|%208.4-777BB4?style=flat-square&logo=php)](https://github.com/marwen-brini/smart-migration)
 [![Laravel](https://img.shields.io/badge/laravel-11%20|%2012-FF2D20?style=flat-square&logo=laravel)](https://github.com/marwen-brini/smart-migration)
 [![Tests](https://img.shields.io/badge/tests-592%20passing-brightgreen?style=flat-square)](https://github.com/marwen-brini/smart-migration)
@@ -9,7 +9,9 @@
 
 **Never fear migrations again!** Smart Migration provides safety, visibility, and confidence when running Laravel migrations. Preview changes before they happen, automatically backup data, and rollback without data loss.
 
-> **🚀 Current Version**: v1.0.0 - Stable Release with auto-diff, snapshot versioning, and full multi-database support!
+> **🚀 Current Version**: v2.0.0-dev - Now with Web Dashboard! 🎉
+>
+> Beautiful Vue 3 dashboard for visual migration management, real-time monitoring, and interactive schema exploration.
 
 ## ✨ Features
 
@@ -29,6 +31,15 @@
 - 🔄 **Database Abstraction** - Unified interface across different database engines
 - ✨ **Auto-Diff** - Automatically generate migrations from database changes
 - 🔖 **Snapshot Versioning** - Prevent false positives when upgrading package versions
+
+### 🎨 Web Dashboard (NEW!)
+- 📊 **Visual Migration Management** - Beautiful web interface for managing migrations
+- 🔄 **Real-time Monitoring** - Auto-refreshing dashboard with live status updates
+- 🗂️ **Interactive Schema Explorer** - Browse and search your database structure
+- 📈 **Performance Metrics** - Charts and graphs for migration performance
+- ⏱️ **Migration Timeline** - Visual history of all applied migrations
+- ⚠️ **Drift Alerts** - Visual warnings when schema diverges from migrations
+- 🎯 **Risk Indicators** - Color-coded risk levels for pending migrations
 
 ## 📦 Requirements
 
@@ -155,6 +166,81 @@ Rolling back: 2025_01_15_000000_create_users_table
 
 💡 Tip: Archived data will be kept for 7 days before automatic cleanup.
    You can restore it manually if needed using SQL commands.
+```
+
+## 🎨 Web Dashboard
+
+Launch the visual dashboard for a complete migration management experience:
+
+```bash
+php artisan migrate:ui
+```
+
+The dashboard will be available at `http://localhost:8080`
+
+### Dashboard Features
+
+**Migration Management**:
+- ✅ Preview migrations before running with SQL and risk assessment
+- ✅ Run migrations safely with visual progress tracking
+- ✅ Safe rollback with data preservation confirmations
+- ✅ Test migrations on temporary database
+- ✅ Detect and resolve migration conflicts
+
+**Schema Tools**:
+- ✅ Interactive schema explorer with table/column browsing
+- ✅ Drift detection with visual alerts
+- ✅ Auto-diff generator to create migrations from changes
+- ✅ Schema snapshots management
+
+**Monitoring & Analytics**:
+- ✅ Real-time migration status dashboard
+- ✅ Performance metrics and charts
+- ✅ Migration history timeline
+- ✅ Export functionality (HTML, CSV, JSON)
+
+**User Experience**:
+- ✅ Auto-refresh every 30 seconds
+- ✅ Toast notifications for actions
+- ✅ Color-coded risk indicators
+- ✅ Responsive design with Tailwind CSS
+
+### Dashboard Navigation
+
+- **Overview** - Dashboard summary and quick statistics
+- **Migrations** - Manage and execute database migrations
+- **Schema** - Explore your database structure
+- **Schema Drift** - Detect and fix schema drift
+- **Snapshots** - Manage schema snapshots
+- **Metrics** - View migration performance metrics
+- **History** - Migration execution timeline
+- **Performance** - Performance monitoring and baselines
+- **Conflicts** - Detect migration conflicts
+- **Auto-Diff** - Generate migrations from database changes
+
+### API Endpoints
+
+The dashboard is built on a comprehensive REST API:
+
+```
+GET  /api/smart-migration/status
+GET  /api/smart-migration/migrations
+GET  /api/smart-migration/migrations/preview/{migration}
+POST /api/smart-migration/migrations/run-safe
+POST /api/smart-migration/migrations/undo-safe
+POST /api/smart-migration/migrations/test
+GET  /api/smart-migration/migrations/conflicts
+GET  /api/smart-migration/migrations/diff
+POST /api/smart-migration/migrations/diff/generate
+GET  /api/smart-migration/schema
+GET  /api/smart-migration/drift
+GET  /api/smart-migration/snapshots
+POST /api/smart-migration/snapshots
+DELETE /api/smart-migration/snapshots/{name}
+GET  /api/smart-migration/metrics
+GET  /api/smart-migration/history
+GET  /api/smart-migration/performance/baselines
+GET  /api/smart-migration/performance/report
 ```
 
 ## 📘 Commands Reference
@@ -287,6 +373,41 @@ php artisan migrate:config
 php artisan migrate:config --section=safety
 ```
 
+#### `migrate:ui`
+Launch the web dashboard for visual migration management.
+
+```bash
+# Start dashboard server
+php artisan migrate:ui
+
+# Custom port and host
+php artisan migrate:ui --port=3000 --host=127.0.0.1
+```
+
+**Dashboard Features:**
+- 📊 Real-time migration status overview
+- 🔍 Interactive schema explorer
+- 📈 Performance metrics and charts
+- ⏱️ Migration history timeline
+- ⚠️ Schema drift alerts
+- 🎨 Beautiful, responsive UI
+
+**First Time Setup:**
+```bash
+# Navigate to package directory
+cd vendor/marwen-brini/smart-migration
+
+# Install frontend dependencies
+npm install
+
+# Return to your project
+cd ../../../
+```
+
+Then run `php artisan migrate:ui` to launch the dashboard at `http://localhost:8080`
+
+See [DASHBOARD_IMPLEMENTATION.md](DASHBOARD_IMPLEMENTATION.md) for complete documentation.
+
 ## Testing
 
 ```bash
@@ -341,15 +462,29 @@ Please review [our security policy](../../security/policy) on how to report secu
 - [x] 100% test coverage (592 tests)
 - [x] Production-ready stability
 
-### 🔮 Future (v2.0.0+)
-- [ ] Web dashboard
-- [ ] Team features
+### ✅ Dashboard (v2.0.0) - JUST COMPLETED! 🎉
+- [x] `migrate:ui` - Web dashboard command
+- [x] Real-time migration status overview
+- [x] Interactive schema explorer with search
+- [x] Performance metrics and charts
+- [x] Migration history timeline
+- [x] Schema drift alerts
+- [x] Vue 3 + Vite + Tailwind CSS
+- [x] RESTful API endpoints
+- [x] Auto-refresh functionality
+- [x] Responsive design
+
+### 🔮 Future (v2.1+)
+- [ ] WebSocket real-time updates
+- [ ] Team features and approvals
 - [ ] CI/CD integrations
 - [ ] Cloud backup integration
-- [ ] Webhook notifications (partial support in v1.0.0)
+- [ ] Manual migration execution from dashboard
+- [ ] Drag-and-drop migration ordering
+- [ ] Export reports (PDF, CSV)
+- [ ] Dark mode theme
 - [ ] Advanced rollback strategies
 - [ ] Migration performance profiling
-- [ ] GUI for migration preview
 
 See the full [Development Roadmap](smart-migration-roadmap.md) for detailed plans.
 
