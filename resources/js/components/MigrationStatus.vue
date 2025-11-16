@@ -46,12 +46,12 @@
               👁 Preview
             </button>
             <button
-              @click="handleRunSingle(migration)"
+              @click="handleRunSafe(migration)"
               :disabled="isRunning"
-              class="btn btn-primary text-xs"
+              class="btn text-xs bg-green-600 text-white hover:bg-green-700 border-green-600"
             >
               <span v-if="isRunning">⏳</span>
-              <span v-else>▶️ Run</span>
+              <span v-else>🛡️ Run Safe</span>
             </button>
             <div class="text-2xl">{{ getRiskIcon(migration.risk) }}</div>
           </div>
@@ -98,6 +98,16 @@
     @close="closePreview"
     @run-migration="handleRunFromPreview"
   />
+
+  <!-- Safe Migration Modal -->
+  <safe-migration-modal
+    :show="showSafeMigrationModal"
+    :migration-name="selectedMigration"
+    :auto-run="true"
+    @close="closeSafeMigration"
+    @complete="handleSafeMigrationComplete"
+    @error="handleSafeMigrationError"
+  />
 </template>
 
 <script setup>
@@ -106,6 +116,7 @@ import { formatMigrationName, formatRelativeTime, getRiskIcon } from '../utils/f
 import { useToast } from '../composables/useToast';
 import api from '../utils/api';
 import MigrationPreviewModal from './MigrationPreviewModal.vue';
+import SafeMigrationModal from './SafeMigrationModal.vue';
 
 const props = defineProps({
   migrations: {
@@ -120,6 +131,7 @@ const { success, error, warning } = useToast();
 const isRunning = ref(false);
 const isRollingBack = ref(false);
 const showPreviewModal = ref(false);
+const showSafeMigrationModal = ref(false);
 const selectedMigration = ref(null);
 
 const pending = computed(() => {
@@ -250,5 +262,26 @@ async function handleRunFromPreview(migrationName) {
   if (migration) {
     await handleRunSingle(migration);
   }
+}
+
+function handleRunSafe(migration) {
+  selectedMigration.value = migration.name;
+  showSafeMigrationModal.value = true;
+}
+
+function closeSafeMigration() {
+  showSafeMigrationModal.value = false;
+  selectedMigration.value = null;
+}
+
+function handleSafeMigrationComplete(data) {
+  success(`Migration "${formatName(selectedMigration.value)}" completed successfully in ${data.duration_ms}ms`);
+  closeSafeMigration();
+  emit('refresh');
+}
+
+function handleSafeMigrationError(err) {
+  error(`Migration failed: ${err.message}`);
+  // Modal stays open to show error details
 }
 </script>

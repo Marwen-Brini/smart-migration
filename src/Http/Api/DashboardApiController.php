@@ -4,9 +4,14 @@ namespace Flux\Http\Api;
 
 use Flux\Monitoring\PerformanceBaseline;
 use Flux\Analyzers\MigrationAnalyzer;
+use Flux\Safety\SafeMigrator;
+use Flux\Database\DatabaseAdapterFactoryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Flux\Dashboard\DashboardService;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\App;
 
 class DashboardApiController extends Controller
 {
@@ -284,6 +289,75 @@ class DashboardApiController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Run migration in safe mode
+     */
+    public function runSafeMigration(): JsonResponse
+    {
+        try {
+            $migration = request()->input('migration');
+
+            if (!$migration) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Migration name is required'
+                ], 400);
+            }
+
+            $migrationPath = database_path('migrations');
+            $file = $migrationPath . '/' . $migration . '.php';
+
+            if (!file_exists($file)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Migration file not found'
+                ], 404);
+            }
+
+            // Create SafeMigrator instance manually
+            $repository = App::make('migration.repository');
+            $filesystem = App::make('files');
+            $events = App::make('events');
+            $database = App::make('db');
+
+            $safeMigrator = new SafeMigrator($repository, $database, $filesystem, $events);
+            $safeMigrator->setAdapterFactory(App::make(DatabaseAdapterFactoryInterface::class));
+
+            $batch = $safeMigrator->getRepository()->getNextBatchNumber();
+
+            // Get data loss estimate
+            $dataLoss = $safeMigrator->estimateDataLoss($file);
+
+            // Get affected tables
+            $affectedTables = $safeMigrator->getAffectedTables($file);
+
+            $startTime = microtime(true);
+
+            // Run the migration safely
+            $safeMigrator->runSafe($file, $batch, false);
+
+            $duration = round((microtime(true) - $startTime) * 1000);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Migration executed successfully',
+                'migration' => $migration,
+                'duration_ms' => $duration,
+                'affected_tables' => $affectedTables,
+                'data_loss' => $dataLoss,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error_details' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ]
             ], 500);
         }
     }

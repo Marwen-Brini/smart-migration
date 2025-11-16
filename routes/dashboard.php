@@ -34,5 +34,6 @@ Route::prefix('api/smart-migration')->name('smart-migration.api.')->group(functi
     Route::post('/snapshots', [DashboardApiController::class, 'createSnapshot'])->name('snapshots.create');
     Route::delete('/snapshots/{name}', [DashboardApiController::class, 'deleteSnapshot'])->name('snapshots.delete');
     Route::post('/migrations/run', [DashboardApiController::class, 'runMigrations'])->name('migrations.run');
+    Route::post('/migrations/run-safe', [DashboardApiController::class, 'runSafeMigration'])->name('migrations.run-safe');
     Route::post('/migrations/rollback', [DashboardApiController::class, 'rollbackMigrations'])->name('migrations.rollback');
 });
