@@ -64,12 +64,12 @@
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Recently Applied</h3>
         <button
-          @click="handleRollback"
+          @click="handleSafeRollback"
           :disabled="isRollingBack"
           class="btn text-xs bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
         >
           <span v-if="isRollingBack">⏳ Rolling back...</span>
-          <span v-else>↩️ Rollback Last</span>
+          <span v-else>↩️ Safe Rollback</span>
         </button>
       </div>
       <div v-for="migration in recentlyApplied" :key="migration.name" class="border border-green-200 bg-green-50 rounded-lg p-4 mb-2">
@@ -108,6 +108,15 @@
     @complete="handleSafeMigrationComplete"
     @error="handleSafeMigrationError"
   />
+
+  <!-- Safe Rollback Modal -->
+  <safe-rollback-modal
+    :show="showSafeRollbackModal"
+    :migration-name="null"
+    @close="closeSafeRollback"
+    @complete="handleSafeRollbackComplete"
+    @error="handleSafeRollbackError"
+  />
 </template>
 
 <script setup>
@@ -117,6 +126,7 @@ import { useToast } from '../composables/useToast';
 import api from '../utils/api';
 import MigrationPreviewModal from './MigrationPreviewModal.vue';
 import SafeMigrationModal from './SafeMigrationModal.vue';
+import SafeRollbackModal from './SafeRollbackModal.vue';
 
 const props = defineProps({
   migrations: {
@@ -132,6 +142,7 @@ const isRunning = ref(false);
 const isRollingBack = ref(false);
 const showPreviewModal = ref(false);
 const showSafeMigrationModal = ref(false);
+const showSafeRollbackModal = ref(false);
 const selectedMigration = ref(null);
 
 const pending = computed(() => {
@@ -282,6 +293,25 @@ function handleSafeMigrationComplete(data) {
 
 function handleSafeMigrationError(err) {
   error(`Migration failed: ${err.message}`);
+  // Modal stays open to show error details
+}
+
+function handleSafeRollback() {
+  showSafeRollbackModal.value = true;
+}
+
+function closeSafeRollback() {
+  showSafeRollbackModal.value = false;
+}
+
+function handleSafeRollbackComplete(data) {
+  success(`Safe rollback completed in ${data.duration_ms}ms. Data has been archived safely.`);
+  closeSafeRollback();
+  emit('refresh');
+}
+
+function handleSafeRollbackError(err) {
+  error(`Rollback failed: ${err.message}`);
   // Modal stays open to show error details
 }
 </script>

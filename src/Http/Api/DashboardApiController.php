@@ -361,4 +361,95 @@ class DashboardApiController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Safe rollback (undo) migration
+     */
+    public function undoSafeMigration(): JsonResponse
+    {
+        try {
+            $migration = request()->input('migration');
+            $step = request()->input('step', 1);
+
+            // Create SafeMigrator instance
+            $repository = App::make('migration.repository');
+            $filesystem = App::make('files');
+            $events = App::make('events');
+            $database = App::make('db');
+
+            $safeMigrator = new SafeMigrator($repository, $database, $filesystem, $events);
+            $safeMigrator->setAdapterFactory(App::make(DatabaseAdapterFactoryInterface::class));
+
+            // Get migrations to rollback
+            $ran = $repository->getRan();
+
+            if (empty($ran)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No migrations to rollback'
+                ], 400);
+            }
+
+            // If specific migration provided, rollback that one
+            if ($migration) {
+                $migrationPath = database_path('migrations');
+                $file = $migrationPath . '/' . $migration . '.php';
+
+                if (!file_exists($file)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Migration file not found'
+                    ], 404);
+                }
+
+                $startTime = microtime(true);
+
+                // Perform safe undo
+                $safeMigrator->undoSafe($file);
+
+                $duration = round((microtime(true) - $startTime) * 1000);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Migration rolled back successfully (data archived)',
+                    'migration' => $migration,
+                    'duration_ms' => $duration,
+                ]);
+            } else {
+                // Rollback last batch/step
+                $migrations = $repository->getMigrations($step);
+                $rolledBack = [];
+
+                $startTime = microtime(true);
+
+                foreach ($migrations as $migrationObj) {
+                    $migrationPath = database_path('migrations');
+                    $file = $migrationPath . '/' . $migrationObj->migration . '.php';
+
+                    if (file_exists($file)) {
+                        $safeMigrator->undoSafe($file);
+                        $rolledBack[] = $migrationObj->migration;
+                    }
+                }
+
+                $duration = round((microtime(true) - $startTime) * 1000);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => count($rolledBack) . ' migration(s) rolled back successfully',
+                    'rolled_back' => $rolledBack,
+                    'duration_ms' => $duration,
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error_details' => [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ]
+            ], 500);
+        }
+    }
 }

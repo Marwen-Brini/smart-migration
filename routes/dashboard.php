@@ -36,4 +36,5 @@ Route::prefix('api/smart-migration')->name('smart-migration.api.')->group(functi
     Route::post('/migrations/run', [DashboardApiController::class, 'runMigrations'])->name('migrations.run');
     Route::post('/migrations/run-safe', [DashboardApiController::class, 'runSafeMigration'])->name('migrations.run-safe');
     Route::post('/migrations/rollback', [DashboardApiController::class, 'rollbackMigrations'])->name('migrations.rollback');
+    Route::post('/migrations/undo-safe', [DashboardApiController::class, 'undoSafeMigration'])->name('migrations.undo-safe');
 });
