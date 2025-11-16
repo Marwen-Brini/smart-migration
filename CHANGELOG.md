@@ -5,6 +5,43 @@ All notable changes to `smart-migration` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added (v1.1.0 - Missing v1.0 Features)
+- **`migrate:history` Command**: Visual timeline of all schema changes
+  - Shows applied and pending migrations in chronological order
+  - Displays batch information and migration metadata
+  - Supports `--json` output for programmatic access
+  - Supports `--reverse` to show oldest first
+  - Supports `--limit` to control number of migrations shown
+  - Shows version/tag information from migration docblocks
+
+- **`migrate:test` Command**: Test migrations on temporary database
+  - Tests migrations in isolated environment before production
+  - Automatic test database setup and teardown
+  - Tests both forward migration and rollback
+  - Captures pre/post migration state for comparison
+  - Runs integrity checks and detects schema changes
+  - Supports `--with-data` to seed test database
+  - Supports `--keep` to preserve test database for inspection
+  - Supports `--rollback` to test down() methods
+  - Works with SQLite `:memory:` for fast testing
+
+- **`migrate:conflicts` Command**: Detect migration conflicts
+  - Detects duplicate table creations
+  - Detects modifications before table creation
+  - Detects concurrent modifications to same table
+  - Detects create-after-drop patterns
+  - Provides detailed conflict analysis and recommendations
+  - Supports `--json` output for CI/CD integration
+  - Supports `--auto-resolve` flag (manual resolution still required for most conflicts)
+  - Shows impact and resolution strategies for each conflict type
+
+### Technical Improvements
+- Enhanced service provider with 3 new command registrations
+- Improved migration analysis for conflict detection
+- Better error messages and user guidance for test setup
+
 ## [1.0.0] - 2025-01-29
 
 ### 🎉 Stable Release
