@@ -40,6 +40,12 @@
           </div>
           <div class="flex items-center space-x-2">
             <button
+              @click="handlePreview(migration)"
+              class="btn btn-secondary text-xs"
+            >
+              👁 Preview
+            </button>
+            <button
               @click="handleRunSingle(migration)"
               :disabled="isRunning"
               class="btn btn-primary text-xs"
@@ -84,6 +90,14 @@
       <p class="text-sm text-gray-500 mt-1">No pending migrations found</p>
     </div>
   </div>
+
+  <!-- Migration Preview Modal -->
+  <migration-preview-modal
+    :show="showPreviewModal"
+    :migration-name="selectedMigration"
+    @close="closePreview"
+    @run-migration="handleRunFromPreview"
+  />
 </template>
 
 <script setup>
@@ -91,6 +105,7 @@ import { ref, computed } from 'vue';
 import { formatMigrationName, formatRelativeTime, getRiskIcon } from '../utils/formatters';
 import { useToast } from '../composables/useToast';
 import api from '../utils/api';
+import MigrationPreviewModal from './MigrationPreviewModal.vue';
 
 const props = defineProps({
   migrations: {
@@ -104,6 +119,8 @@ const emit = defineEmits(['refresh']);
 const { success, error, warning } = useToast();
 const isRunning = ref(false);
 const isRollingBack = ref(false);
+const showPreviewModal = ref(false);
+const selectedMigration = ref(null);
 
 const pending = computed(() => {
   return props.migrations.filter(m => m.status === 'pending');
@@ -213,6 +230,25 @@ async function handleRollback() {
     error(err.response?.data?.message || 'Failed to rollback migration');
   } finally {
     isRollingBack.value = false;
+  }
+}
+
+function handlePreview(migration) {
+  selectedMigration.value = migration.name;
+  showPreviewModal.value = true;
+}
+
+function closePreview() {
+  showPreviewModal.value = false;
+  selectedMigration.value = null;
+}
+
+async function handleRunFromPreview(migrationName) {
+  closePreview();
+
+  const migration = pending.value.find(m => m.name === migrationName);
+  if (migration) {
+    await handleRunSingle(migration);
   }
 }
 </script>

@@ -27,6 +27,7 @@ Route::prefix('api/smart-migration')->name('smart-migration.api.')->group(functi
     Route::get('/performance/baselines', [DashboardApiController::class, 'performanceBaselines'])->name('performance.baselines');
     Route::get('/performance/report', [DashboardApiController::class, 'performanceReport'])->name('performance.report');
     Route::get('/performance/migration/{migration}', [DashboardApiController::class, 'migrationPerformance'])->name('performance.migration');
+    Route::get('/migrations/preview/{migration}', [DashboardApiController::class, 'migrationPreview'])->name('migrations.preview');
 
     // POST/DELETE endpoints (Actions)
     Route::post('/drift/fix', [DashboardApiController::class, 'generateFixMigration'])->name('drift.fix');

@@ -3,6 +3,7 @@
 namespace Flux\Http\Api;
 
 use Flux\Monitoring\PerformanceBaseline;
+use Flux\Analyzers\MigrationAnalyzer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Flux\Dashboard\DashboardService;
@@ -11,7 +12,8 @@ class DashboardApiController extends Controller
 {
     public function __construct(
         protected DashboardService $dashboardService,
-        protected PerformanceBaseline $performanceBaseline
+        protected PerformanceBaseline $performanceBaseline,
+        protected MigrationAnalyzer $migrationAnalyzer
     ) {
     }
 
@@ -251,6 +253,37 @@ class DashboardApiController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Preview a specific migration (plan)
+     */
+    public function migrationPreview(string $migration): JsonResponse
+    {
+        try {
+            $migrationPath = database_path('migrations');
+            $file = $migrationPath . '/' . $migration . '.php';
+
+            if (!file_exists($file)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Migration file not found'
+                ], 404);
+            }
+
+            $analysis = $this->migrationAnalyzer->analyze($file);
+
+            return response()->json([
+                'success' => true,
+                'migration' => $migration,
+                'analysis' => $analysis,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
             ], 500);
         }
     }
