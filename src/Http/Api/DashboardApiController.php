@@ -2,6 +2,7 @@
 
 namespace Flux\Http\Api;
 
+use Flux\Monitoring\PerformanceBaseline;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Flux\Dashboard\DashboardService;
@@ -9,7 +10,8 @@ use Flux\Dashboard\DashboardService;
 class DashboardApiController extends Controller
 {
     public function __construct(
-        protected DashboardService $dashboardService
+        protected DashboardService $dashboardService,
+        protected PerformanceBaseline $performanceBaseline
     ) {
     }
 
@@ -197,6 +199,58 @@ class DashboardApiController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get performance baselines
+     */
+    public function performanceBaselines(): JsonResponse
+    {
+        try {
+            $baselines = $this->performanceBaseline->getAll();
+            return response()->json($baselines);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get performance report
+     */
+    public function performanceReport(): JsonResponse
+    {
+        try {
+            $report = $this->performanceBaseline->generateReport();
+            return response()->json($report);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get performance for specific migration
+     */
+    public function migrationPerformance(string $migration): JsonResponse
+    {
+        try {
+            $stats = $this->performanceBaseline->getStatistics($migration);
+
+            if (!$stats) {
+                return response()->json([
+                    'error' => 'No performance data found for this migration'
+                ], 404);
+            }
+
+            return response()->json($stats);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage()
             ], 500);
         }
     }
