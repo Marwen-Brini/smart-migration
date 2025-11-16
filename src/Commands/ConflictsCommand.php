@@ -80,12 +80,13 @@ class ConflictsCommand extends Command
         $files = $migrator->getMigrationFiles($path);
 
         return collect($files)->map(function ($file, $name) use ($path) {
+            // $file already contains the full path from getMigrationFiles()
             return [
                 'name' => $name,
                 'file' => $file,
-                'path' => $path . '/' . $file . '.php',
+                'path' => $file,
                 'timestamp' => $this->extractTimestamp($name),
-                'operations' => $this->extractOperations($path . '/' . $file . '.php'),
+                'operations' => $this->extractOperations($file),
             ];
         })->values();
     }
@@ -182,6 +183,14 @@ class ConflictsCommand extends Command
             }
         }
 
+        // DEBUG: Show what operations were found
+        if ($this->option('verbose')) {
+            $this->comment('Found operations for tables: ' . implode(', ', array_keys($tableOperations)));
+            foreach ($tableOperations as $table => $ops) {
+                $this->line("  {$table}: " . count($ops) . " operations");
+            }
+        }
+
         // Detect conflicts
         foreach ($tableOperations as $table => $operations) {
             $this->detectTableConflicts($table, $operations);
@@ -225,7 +234,7 @@ class ConflictsCommand extends Command
 
             // Conflict 5: Multiple migrations modifying same table in same batch
             if ($op['operation']['type'] === 'table') {
-                $sameBatchModifications = array_filter($operations, function ($other) use ($op, $index) {
+                $sameBatchModifications = array_filter($operations, function ($other) use ($op, $index, $operations) {
                     return $other['operation']['type'] === 'table'
                         && abs($other['timestamp'] - $op['timestamp']) < 100 // Within 1 minute
                         && $other !== $operations[$index];
