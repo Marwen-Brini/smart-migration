@@ -60,44 +60,178 @@
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       @click.self="closeDetailsModal"
     >
-      <div class="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto m-4">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold">Snapshot Details</h3>
-          <button @click="closeDetailsModal" class="text-2xl hover:opacity-70">&times;</button>
+      <div class="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-hidden m-4 flex flex-col">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-6 border-b border-gray-200">
+          <div>
+            <h3 class="text-xl font-semibold text-gray-900">📸 {{ selectedSnapshot?.name }}</h3>
+            <p class="text-sm text-gray-500 mt-1">{{ formatDate(selectedSnapshot?.timestamp) }}</p>
+          </div>
+          <button @click="closeDetailsModal" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">
+            &times;
+          </button>
         </div>
 
-        <div v-if="selectedSnapshot" class="space-y-4">
-          <div>
-            <p class="text-sm font-medium text-gray-700">Name</p>
-            <p class="text-sm text-gray-900">{{ selectedSnapshot.name }}</p>
-          </div>
-
-          <div>
-            <p class="text-sm font-medium text-gray-700">Created</p>
-            <p class="text-sm text-gray-900">{{ formatDate(selectedSnapshot.timestamp) }}</p>
-          </div>
-
-          <div>
-            <p class="text-sm font-medium text-gray-700">Tables ({{ selectedSnapshot.table_count }})</p>
-            <div class="mt-2 max-h-64 overflow-y-auto border border-gray-200 rounded p-2">
-              <div v-if="selectedSnapshot.schema?.tables">
-                <div
-                  v-for="(table, tableName) in selectedSnapshot.schema.tables"
-                  :key="tableName"
-                  class="text-sm py-1 border-b border-gray-100 last:border-0"
-                >
-                  <span class="font-medium">{{ tableName }}</span>
-                  <span class="text-gray-500 ml-2">
-                    ({{ table.columns?.length || 0 }} columns)
-                  </span>
-                </div>
-              </div>
+        <!-- Content -->
+        <div v-if="selectedSnapshot" class="flex-1 overflow-y-auto p-6">
+          <!-- Summary Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-blue-50 rounded-lg p-4">
+              <p class="text-sm font-medium text-blue-900">Total Tables</p>
+              <p class="text-2xl font-bold text-blue-600 mt-1">{{ selectedSnapshot.table_count || 0 }}</p>
+            </div>
+            <div class="bg-green-50 rounded-lg p-4">
+              <p class="text-sm font-medium text-green-900">Snapshot Size</p>
+              <p class="text-2xl font-bold text-green-600 mt-1">{{ formatSize(selectedSnapshot.size) }}</p>
+            </div>
+            <div class="bg-purple-50 rounded-lg p-4">
+              <p class="text-sm font-medium text-purple-900">Format Version</p>
+              <p class="text-2xl font-bold text-purple-600 mt-1">{{ selectedSnapshot.format_version || 'v1' }}</p>
+            </div>
+            <div class="bg-yellow-50 rounded-lg p-4">
+              <p class="text-sm font-medium text-yellow-900">Status</p>
+              <p class="text-sm font-semibold mt-1">
+                <span v-if="selectedSnapshot.is_latest" class="text-green-600">✓ Latest</span>
+                <span v-else class="text-gray-600">Archived</span>
+              </p>
             </div>
           </div>
 
-          <div v-if="selectedSnapshot.format_version">
-            <p class="text-sm font-medium text-gray-700">Format Version</p>
-            <p class="text-sm text-gray-900">{{ selectedSnapshot.format_version }}</p>
+          <!-- Tables List -->
+          <div class="space-y-4">
+            <h4 class="text-lg font-semibold text-gray-900">Database Schema</h4>
+
+            <div v-if="selectedSnapshot.schema?.tables" class="space-y-3">
+              <div
+                v-for="(table, tableName) in selectedSnapshot.schema.tables"
+                :key="tableName"
+                class="border border-gray-200 rounded-lg overflow-hidden"
+              >
+                <!-- Table Header -->
+                <button
+                  @click="toggleTableExpanded(tableName)"
+                  class="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                >
+                  <div class="flex items-center space-x-3">
+                    <span class="text-lg">{{ expandedTables.has(tableName) ? '▼' : '▶' }}</span>
+                    <div class="text-left">
+                      <h5 class="font-semibold text-gray-900">{{ tableName }}</h5>
+                      <p class="text-xs text-gray-500">
+                        {{ table.columns?.length || 0 }} columns
+                        <span v-if="table.indexes?.length"> • {{ table.indexes.length }} indexes</span>
+                        <span v-if="table.foreign_keys?.length"> • {{ table.foreign_keys.length }} foreign keys</span>
+                      </p>
+                    </div>
+                  </div>
+                </button>
+
+                <!-- Expanded Table Details -->
+                <div v-if="expandedTables.has(tableName)" class="border-t border-gray-200">
+                  <!-- Columns -->
+                  <div class="p-4">
+                    <h6 class="text-sm font-semibold text-gray-700 mb-3">Columns</h6>
+                    <div class="overflow-x-auto">
+                      <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50">
+                          <tr>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Nullable</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Default</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Extra</th>
+                          </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-100">
+                          <tr v-for="column in table.columns" :key="column.name">
+                            <td class="px-3 py-2 font-medium text-gray-900">
+                              {{ column.name }}
+                              <span v-if="column.primary" class="ml-1 text-xs text-blue-600">🔑</span>
+                            </td>
+                            <td class="px-3 py-2 text-gray-600">{{ column.type }}</td>
+                            <td class="px-3 py-2">
+                              <span :class="column.nullable ? 'text-green-600' : 'text-red-600'">
+                                {{ column.nullable ? 'YES' : 'NO' }}
+                              </span>
+                            </td>
+                            <td class="px-3 py-2 text-gray-600">
+                              <code v-if="column.default" class="text-xs bg-gray-100 px-1 py-0.5 rounded">
+                                {{ column.default }}
+                              </code>
+                              <span v-else class="text-gray-400">-</span>
+                            </td>
+                            <td class="px-3 py-2 text-gray-600">
+                              <span v-if="column.auto_increment" class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                AUTO_INCREMENT
+                              </span>
+                              <span v-else class="text-gray-400">-</span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <!-- Indexes -->
+                  <div v-if="table.indexes && table.indexes.length > 0" class="p-4 bg-gray-50 border-t border-gray-200">
+                    <h6 class="text-sm font-semibold text-gray-700 mb-3">Indexes</h6>
+                    <div class="space-y-2">
+                      <div
+                        v-for="index in table.indexes"
+                        :key="index.name"
+                        class="flex items-center justify-between text-sm bg-white p-2 rounded border border-gray-200"
+                      >
+                        <div>
+                          <span class="font-medium text-gray-900">{{ index.name }}</span>
+                          <span class="text-gray-500 ml-2">({{ index.columns?.join(', ') || 'N/A' }})</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                          <span
+                            v-if="index.unique"
+                            class="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded"
+                          >
+                            UNIQUE
+                          </span>
+                          <span
+                            v-if="index.primary"
+                            class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded"
+                          >
+                            PRIMARY
+                          </span>
+                          <span class="text-xs text-gray-500">{{ index.type || 'BTREE' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Foreign Keys -->
+                  <div v-if="table.foreign_keys && table.foreign_keys.length > 0" class="p-4 border-t border-gray-200">
+                    <h6 class="text-sm font-semibold text-gray-700 mb-3">Foreign Keys</h6>
+                    <div class="space-y-2">
+                      <div
+                        v-for="fk in table.foreign_keys"
+                        :key="fk.name"
+                        class="text-sm bg-gray-50 p-3 rounded border border-gray-200"
+                      >
+                        <div class="font-medium text-gray-900 mb-1">{{ fk.name }}</div>
+                        <div class="text-gray-600">
+                          <span class="font-mono text-xs bg-white px-1.5 py-0.5 rounded border">{{ fk.column }}</span>
+                          →
+                          <span class="font-mono text-xs bg-white px-1.5 py-0.5 rounded border">{{ fk.foreign_table }}.{{ fk.foreign_column }}</span>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">
+                          <span v-if="fk.on_delete">ON DELETE: {{ fk.on_delete }}</span>
+                          <span v-if="fk.on_update" class="ml-2">ON UPDATE: {{ fk.on_update }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="text-center py-8 text-gray-500">
+              No schema data available
+            </div>
           </div>
         </div>
       </div>
@@ -153,6 +287,7 @@ const showDeleteConfirm = ref(false);
 const selectedSnapshot = ref(null);
 const snapshotToDelete = ref(null);
 const deletingSnapshot = ref(null);
+const expandedTables = ref(new Set());
 
 const formatDate = (timestamp) => {
   if (!timestamp) return 'Unknown';
@@ -173,14 +308,26 @@ const formatSize = (size) => {
   return `${fileSize.toFixed(1)} ${units[unitIndex]}`;
 };
 
+const toggleTableExpanded = (tableName) => {
+  if (expandedTables.value.has(tableName)) {
+    expandedTables.value.delete(tableName);
+  } else {
+    expandedTables.value.add(tableName);
+  }
+  // Trigger reactivity
+  expandedTables.value = new Set(expandedTables.value);
+};
+
 const handleViewDetails = (snapshot) => {
   selectedSnapshot.value = snapshot;
   showDetailsModal.value = true;
+  expandedTables.value = new Set(); // Reset expanded state
 };
 
 const closeDetailsModal = () => {
   showDetailsModal.value = false;
   selectedSnapshot.value = null;
+  expandedTables.value = new Set(); // Reset expanded state
 };
 
 const handleDelete = (snapshot) => {
