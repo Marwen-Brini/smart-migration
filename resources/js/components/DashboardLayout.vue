@@ -212,6 +212,12 @@ const navItems = computed(() => [
     icon: '⚠️',
     badge: null,
   },
+  {
+    id: 'diff',
+    label: 'Auto-Diff',
+    icon: '🔍',
+    badge: null,
+  },
 ]);
 
 const viewDetails = {
@@ -250,6 +256,10 @@ const viewDetails = {
   conflicts: {
     title: 'Migration Conflicts',
     description: 'Detect and resolve migration conflicts',
+  },
+  diff: {
+    title: 'Auto-Diff Generator',
+    description: 'Generate migrations from database schema changes',
   },
 };
 

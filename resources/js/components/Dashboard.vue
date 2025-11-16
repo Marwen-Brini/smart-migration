@@ -88,6 +88,12 @@
         <div v-else-if="activeView === 'conflicts'" class="p-8">
           <conflicts-view />
         </div>
+
+        <!-- Diff Generator View -->
+        <diff-generator-view
+          v-else-if="activeView === 'diff'"
+          @refresh="refreshAll"
+        />
       </div>
     </template>
   </dashboard-layout>
@@ -110,6 +116,7 @@ import DashboardLayout from './DashboardLayout.vue';
 import OverviewView from './views/OverviewView.vue';
 import PerformanceView from './views/PerformanceView.vue';
 import ConflictsView from './views/ConflictsView.vue';
+import DiffGeneratorView from './views/DiffGeneratorView.vue';
 import MigrationStatus from './MigrationStatus.vue';
 import MigrationTimeline from './MigrationTimeline.vue';
 import SchemaExplorer from './SchemaExplorer.vue';

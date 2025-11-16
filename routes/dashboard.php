@@ -30,6 +30,8 @@ Route::prefix('api/smart-migration')->name('smart-migration.api.')->group(functi
     Route::get('/migrations/preview/{migration}', [DashboardApiController::class, 'migrationPreview'])->name('migrations.preview');
     Route::get('/migrations/conflicts', [DashboardApiController::class, 'detectConflicts'])->name('migrations.conflicts');
     Route::post('/migrations/test', [DashboardApiController::class, 'testMigration'])->name('migrations.test');
+    Route::get('/migrations/diff', [DashboardApiController::class, 'detectDifferences'])->name('migrations.diff');
+    Route::post('/migrations/diff/generate', [DashboardApiController::class, 'generateDiffMigration'])->name('migrations.diff.generate');
 
     // POST/DELETE endpoints (Actions)
     Route::post('/drift/fix', [DashboardApiController::class, 'generateFixMigration'])->name('drift.fix');

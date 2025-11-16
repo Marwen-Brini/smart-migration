@@ -491,6 +491,104 @@ class DashboardApiController extends Controller
     }
 
     /**
+     * Detect database differences (migrate:diff)
+     */
+    public function detectDifferences(): JsonResponse
+    {
+        try {
+            // Run migrate:diff with dry-run to get differences
+            $exitCode = Artisan::call('migrate:diff', [
+                '--dry-run' => true,
+                '--force' => true,
+            ]);
+
+            $output = Artisan::output();
+
+            // Parse differences from output
+            $hasDifferences = strpos($output, 'No differences detected') === false &&
+                             (strpos($output, 'Found differences') !== false ||
+                              strpos($output, 'Total changes:') !== false);
+
+            // Extract difference details
+            $tablesAdded = [];
+            $tablesRemoved = [];
+            $tablesModified = [];
+
+            // Match pattern: "+ Table 'table_name'"
+            if (preg_match_all('/\+\s+Table\s+[\'"]?(\w+)[\'"]?/', $output, $matches)) {
+                $tablesAdded = $matches[1];
+            }
+
+            // Match pattern: "- Table 'table_name'"
+            if (preg_match_all('/\-\s+Table\s+[\'"]?(\w+)[\'"]?/', $output, $matches)) {
+                $tablesRemoved = $matches[1];
+            }
+
+            // Match pattern: "~ Table 'table_name'" or similar modification markers
+            if (preg_match_all('/~\s+Table\s+[\'"]?(\w+)[\'"]?/', $output, $matches)) {
+                $tablesModified = $matches[1];
+            }
+
+            return response()->json([
+                'success' => true,
+                'has_differences' => $hasDifferences,
+                'tables_added' => $tablesAdded,
+                'tables_removed' => $tablesRemoved,
+                'tables_modified' => $tablesModified,
+                'output' => $output,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate migration from differences
+     */
+    public function generateDiffMigration(): JsonResponse
+    {
+        try {
+            $name = request()->input('name');
+
+            $options = [
+                '--force' => true,
+            ];
+
+            if ($name) {
+                $options['--name'] = $name;
+            }
+
+            $exitCode = Artisan::call('migrate:diff', $options);
+            $output = Artisan::output();
+
+            $success = $exitCode === 0;
+
+            // Extract migration file path from output
+            $migrationPath = null;
+            if (preg_match('/Created:\s+(.+\.php)/', $output, $matches)) {
+                $migrationPath = trim($matches[1]);
+            }
+
+            return response()->json([
+                'success' => $success,
+                'message' => $success ? 'Migration generated successfully!' : 'Failed to generate migration',
+                'migration_path' => $migrationPath,
+                'output' => $output,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Test migration on temporary database
      */
     public function testMigration(): JsonResponse
