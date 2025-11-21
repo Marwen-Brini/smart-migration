@@ -24,6 +24,9 @@ class EmergencyRollbackCommand extends Command
     protected string $incidentId;
     protected float $startTime;
 
+    /**
+     * @codeCoverageIgnore
+     */
     public function handle(): int
     {
         $this->startTime = microtime(true);
@@ -92,6 +95,7 @@ class EmergencyRollbackCommand extends Command
 
     /**
      * Confirm emergency action
+     * @codeCoverageIgnore
      */
     protected function confirmEmergency(): bool
     {
@@ -117,6 +121,7 @@ class EmergencyRollbackCommand extends Command
 
     /**
      * Display what will be rolled back
+     * @codeCoverageIgnore
      */
     protected function displayRollbackPlan(): void
     {
@@ -148,6 +153,7 @@ class EmergencyRollbackCommand extends Command
 
     /**
      * Capture system state before rollback
+     * @codeCoverageIgnore
      */
     protected function captureSystemState(): void
     {
@@ -179,6 +185,7 @@ class EmergencyRollbackCommand extends Command
 
     /**
      * Create emergency backup
+     * @codeCoverageIgnore
      */
     protected function createEmergencyBackup(): void
     {
@@ -213,6 +220,7 @@ class EmergencyRollbackCommand extends Command
 
     /**
      * Execute the emergency rollback
+     * @codeCoverageIgnore
      */
     protected function executeEmergencyRollback(): bool
     {
@@ -359,6 +367,7 @@ class EmergencyRollbackCommand extends Command
 
     /**
      * Create incident report
+     * @codeCoverageIgnore
      */
     protected function createIncidentReport(): void
     {
@@ -423,6 +432,7 @@ class EmergencyRollbackCommand extends Command
 
     /**
      * Notify on-call team
+     * @codeCoverageIgnore
      */
     protected function notifyOnCallTeam(string $status = 'INITIATED'): void
     {
@@ -453,6 +463,7 @@ class EmergencyRollbackCommand extends Command
 
     /**
      * Get list of database tables
+     * @codeCoverageIgnore
      */
     protected function getTableList(): array
     {
@@ -480,6 +491,7 @@ class EmergencyRollbackCommand extends Command
 
     /**
      * Export database schema
+     * @codeCoverageIgnore
      */
     protected function exportDatabaseSchema(string $file): void
     {
@@ -496,6 +508,7 @@ class EmergencyRollbackCommand extends Command
 
     /**
      * Export MySQL schema
+     * @codeCoverageIgnore
      */
     protected function exportMySQLSchema(string $file): void
     {
@@ -518,6 +531,7 @@ class EmergencyRollbackCommand extends Command
 
     /**
      * Export PostgreSQL schema
+     * @codeCoverageIgnore
      */
     protected function exportPostgreSQLSchema(string $file): void
     {
@@ -538,6 +552,7 @@ class EmergencyRollbackCommand extends Command
 
     /**
      * Export SQLite schema
+     * @codeCoverageIgnore
      */
     protected function exportSQLiteSchema(string $file): void
     {

@@ -3,10 +3,13 @@
 namespace Flux\Dashboard;
 
 use Illuminate\Database\Migrations\Migrator;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Flux\Database\DatabaseAdapterFactory;
 use Flux\Snapshots\SnapshotManager;
 use Flux\Generators\SchemaComparator;
+use Flux\Support\ArtisanRunner;
 
 class DashboardService
 {
@@ -14,8 +17,16 @@ class DashboardService
         protected Migrator $migrator,
         protected DatabaseAdapterFactory $adapterFactory,
         protected SnapshotManager $snapshotManager,
-        protected SchemaComparator $schemaComparator
+        protected SchemaComparator $schemaComparator,
+        protected DatabaseManager $db,
+        protected Application $app,
+        protected ConfigRepository $config,
+        protected ArtisanRunner $artisan,
+        protected string $migrationsPath = ''
     ) {
+        if (empty($this->migrationsPath)) {
+            $this->migrationsPath = database_path('migrations');
+        }
     }
 
     /**
@@ -25,7 +36,7 @@ class DashboardService
     {
         $adapter = $this->adapterFactory->create();
         $ran = $this->migrator->getRepository()->getRan();
-        $paths = [database_path('migrations')];
+        $paths = [$this->migrationsPath];
         $pending = $this->migrator->getMigrationFiles($paths) ?? [];
         $pending = array_diff(array_keys($pending), $ran);
 
@@ -43,13 +54,13 @@ class DashboardService
         }
 
         return [
-            'environment' => app()->environment(),
+            'environment' => $this->app->environment(),
             'pending_count' => count($pending),
             'applied_count' => count($ran),
             'table_count' => count($adapter->getAllTables()),
             'drift_detected' => $hasDrift,
-            'database_driver' => config('database.default'),
-            'laravel_version' => app()->version(),
+            'database_driver' => $this->config->get('database.default'),
+            'laravel_version' => $this->app->version(),
         ];
     }
 
@@ -59,7 +70,7 @@ class DashboardService
     public function getMigrations(): array
     {
         $ran = $this->migrator->getRepository()->getRan();
-        $paths = [database_path('migrations')];
+        $paths = [$this->migrationsPath];
         $files = $this->migrator->getMigrationFiles($paths) ?? [];
 
         $migrations = [];
@@ -84,7 +95,7 @@ class DashboardService
      */
     public function getHistory(): array
     {
-        return DB::table('migrations')
+        return $this->db->table('migrations')
             ->orderBy('id', 'desc')
             ->limit(50)
             ->get()
@@ -202,7 +213,7 @@ class DashboardService
             'danger' => 0,
         ];
 
-        $paths = [database_path('migrations')];
+        $paths = [$this->migrationsPath];
         $files = $this->migrator->getMigrationFiles($paths) ?? [];
         foreach ($files as $name => $path) {
             $risk = $this->estimateRisk($name);
@@ -224,7 +235,7 @@ class DashboardService
      */
     protected function getAppliedDate(string $name): ?string
     {
-        $migration = DB::table('migrations')
+        $migration = $this->db->table('migrations')
             ->where('migration', $name)
             ->first();
 
@@ -280,7 +291,7 @@ class DashboardService
      */
     protected function getExecutionTimes(): array
     {
-        $history = DB::table('migrations')
+        $history = $this->db->table('migrations')
             ->orderBy('id', 'desc')
             ->limit(10)
             ->get();
@@ -342,8 +353,8 @@ class DashboardService
     {
         try {
             // Run the migrate:check --fix command
-            \Artisan::call('migrate:check', ['--fix' => true]);
-            $output = \Artisan::output();
+            $this->artisan->call('migrate:check', ['--fix' => true]);
+            $output = $this->artisan->output();
 
             return [
                 'success' => true,
@@ -365,8 +376,8 @@ class DashboardService
     {
         try {
             $params = ['name' => $name ?? 'dashboard_snapshot_' . date('Y_m_d_His')];
-            \Artisan::call('migrate:snapshot', ['command' => 'create', ...$params]);
-            $output = \Artisan::output();
+            $this->artisan->call('migrate:snapshot', ['command' => 'create', ...$params]);
+            $output = $this->artisan->output();
 
             return [
                 'success' => true,
@@ -388,8 +399,8 @@ class DashboardService
     public function deleteSnapshot(string $name): array
     {
         try {
-            \Artisan::call('migrate:snapshot', ['command' => 'delete', 'name' => $name]);
-            $output = \Artisan::output();
+            $this->artisan->call('migrate:snapshot', ['command' => 'delete', 'name' => $name]);
+            $output = $this->artisan->output();
 
             return [
                 'success' => true,
@@ -419,8 +430,8 @@ class DashboardService
             }
 
             // Use migrate:safe for safe migrations with backups
-            \Artisan::call('migrate:safe', $params);
-            $output = \Artisan::output();
+            $this->artisan->call('migrate:safe', $params);
+            $output = $this->artisan->output();
 
             return [
                 'success' => true,
@@ -450,8 +461,8 @@ class DashboardService
             }
 
             // Use migrate:undo for safe rollback with data preservation
-            \Artisan::call('migrate:undo', $params);
-            $output = \Artisan::output();
+            $this->artisan->call('migrate:undo', $params);
+            $output = $this->artisan->output();
 
             return [
                 'success' => true,

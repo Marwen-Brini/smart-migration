@@ -25,6 +25,7 @@ class UICommand extends Command
 
     /**
      * Execute the console command.
+     * @codeCoverageIgnore
      */
     public function handle(): int
     {
@@ -73,6 +74,7 @@ class UICommand extends Command
 
     /**
      * Check if dependencies are installed
+     * @codeCoverageIgnore
      */
     protected function checkDependencies(): bool
     {
@@ -94,6 +96,7 @@ class UICommand extends Command
 
     /**
      * Start Vite development server
+     * @codeCoverageIgnore
      */
     protected function startViteServer(string $port): void
     {

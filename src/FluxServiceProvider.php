@@ -56,13 +56,20 @@ class FluxServiceProvider extends PackageServiceProvider
             );
         });
 
+        // Register ArtisanRunner
+        $this->app->singleton(\Flux\Support\ArtisanRunner::class, \Flux\Support\LaravelArtisanRunner::class);
+
         // Register DashboardService with dependency injection
         $this->app->singleton(DashboardService::class, function ($app) {
             return new DashboardService(
                 $app->make('migrator'),
                 $app->make(DatabaseAdapterFactoryInterface::class),
                 $app->make(SnapshotManager::class),
-                $app->make(\Flux\Generators\SchemaComparator::class)
+                $app->make(\Flux\Generators\SchemaComparator::class),
+                $app->make('db'),
+                $app,
+                $app->make('config'),
+                $app->make(\Flux\Support\ArtisanRunner::class)
             );
         });
 

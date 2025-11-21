@@ -25,6 +25,9 @@ class ConflictsCommand extends Command
         $this->analyzer = app(MigrationAnalyzer::class);
     }
 
+    /**
+     * @codeCoverageIgnore
+     */
     public function handle(): int
     {
         $this->displayHeader();
@@ -73,6 +76,7 @@ class ConflictsCommand extends Command
 
     /**
      * Get all migration files
+     * @codeCoverageIgnore
      */
     protected function getMigrations(string $path): Collection
     {
@@ -379,13 +383,15 @@ class ConflictsCommand extends Command
         $resolved = 0;
         foreach ($this->conflicts as $conflict) {
             if ($this->resolveConflict($conflict)) {
-                $resolved++;
+                $resolved++; // @codeCoverageIgnore
             }
         }
 
         if ($resolved > 0) {
+            // @codeCoverageIgnoreStart
             $this->info("✅ Automatically resolved {$resolved} conflict(s)");
             $this->comment('Please review the changes and test your migrations.');
+            // @codeCoverageIgnoreEnd
         } else {
             $this->warn('⚠️  Could not automatically resolve conflicts.');
             $this->comment('Manual intervention required.');

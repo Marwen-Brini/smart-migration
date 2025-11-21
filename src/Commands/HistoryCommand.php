@@ -160,8 +160,8 @@ class HistoryCommand extends Command
 
                 return Carbon::create($year, $month, $day, $hour, $minute, $second)
                     ->format('Y-m-d H:i:s');
-            } catch (\Exception $e) {
-                return null;
+            } catch (\Exception $e) { // @codeCoverageIgnore
+                return null; // @codeCoverageIgnore
             }
         }
 

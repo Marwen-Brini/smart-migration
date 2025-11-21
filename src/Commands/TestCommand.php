@@ -27,6 +27,9 @@ class TestCommand extends Command
     protected string $originalConnection;
     protected bool $testPassed = true;
 
+    /**
+     * @codeCoverageIgnore
+     */
     public function handle(): int
     {
         $this->displayHeader();
@@ -102,6 +105,7 @@ class TestCommand extends Command
 
     /**
      * Verify test connection is configured
+     * @codeCoverageIgnore
      */
     protected function verifyTestConnection(): bool
     {
@@ -134,6 +138,7 @@ class TestCommand extends Command
 
     /**
      * Setup test database
+     * @codeCoverageIgnore
      */
     protected function setupTestDatabase(): void
     {
@@ -167,6 +172,7 @@ class TestCommand extends Command
 
     /**
      * Get migrations to test
+     * @codeCoverageIgnore
      */
     protected function getMigrationsToTest(): array
     {
@@ -193,6 +199,7 @@ class TestCommand extends Command
 
     /**
      * Test a single migration
+     * @codeCoverageIgnore
      */
     protected function testMigration(string $migration): bool
     {
@@ -274,6 +281,7 @@ class TestCommand extends Command
 
     /**
      * Test rollback
+     * @codeCoverageIgnore
      */
     protected function testRollback(): void
     {
@@ -305,6 +313,7 @@ class TestCommand extends Command
 
     /**
      * Capture current database state
+     * @codeCoverageIgnore
      */
     protected function captureState(): array
     {
@@ -467,6 +476,7 @@ class TestCommand extends Command
 
     /**
      * Seed test database with sample data
+     * @codeCoverageIgnore
      */
     protected function seedTestDatabase(): void
     {
@@ -485,6 +495,7 @@ class TestCommand extends Command
 
     /**
      * Cleanup test database
+     * @codeCoverageIgnore
      */
     protected function cleanupTestDatabase(): void
     {

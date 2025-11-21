@@ -5,6 +5,8 @@ namespace Flux\Http\Api;
 use Flux\Monitoring\PerformanceBaseline;
 use Flux\Analyzers\MigrationAnalyzer;
 use Flux\Safety\SafeMigrator;
+use Flux\Safety\SafeMigratorFactory;
+use Flux\Support\ArtisanRunner;
 use Flux\Database\DatabaseAdapterFactoryInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
@@ -19,7 +21,9 @@ class DashboardApiController extends Controller
     public function __construct(
         protected DashboardService $dashboardService,
         protected PerformanceBaseline $performanceBaseline,
-        protected MigrationAnalyzer $migrationAnalyzer
+        protected MigrationAnalyzer $migrationAnalyzer,
+        protected ?SafeMigratorFactory $safeMigratorFactory = null,
+        protected ?ArtisanRunner $artisanRunner = null
     ) {
     }
 
@@ -319,14 +323,8 @@ class DashboardApiController extends Controller
                 ], 404);
             }
 
-            // Create SafeMigrator instance manually
-            $repository = App::make('migration.repository');
-            $filesystem = App::make('files');
-            $events = App::make('events');
-            $database = App::make('db');
-
-            $safeMigrator = new SafeMigrator($repository, $database, $filesystem, $events);
-            $safeMigrator->setAdapterFactory(App::make(DatabaseAdapterFactoryInterface::class));
+            // Create SafeMigrator instance using factory
+            $safeMigrator = $this->getSafeMigrator();
 
             $batch = $safeMigrator->getRepository()->getNextBatchNumber();
 
@@ -364,6 +362,27 @@ class DashboardApiController extends Controller
     }
 
     /**
+     * Get SafeMigrator instance
+     */
+    protected function getSafeMigrator(): SafeMigrator
+    {
+        if ($this->safeMigratorFactory) {
+            return $this->safeMigratorFactory->create();
+        }
+
+        // Fallback to direct creation for backwards compatibility
+        $repository = App::make('migration.repository');
+        $filesystem = App::make('files');
+        $events = App::make('events');
+        $database = App::make('db');
+
+        $safeMigrator = new SafeMigrator($repository, $database, $filesystem, $events);
+        $safeMigrator->setAdapterFactory(App::make(DatabaseAdapterFactoryInterface::class));
+
+        return $safeMigrator;
+    }
+
+    /**
      * Safe rollback (undo) migration
      */
     public function undoSafeMigration(): JsonResponse
@@ -372,14 +391,9 @@ class DashboardApiController extends Controller
             $migration = request()->input('migration');
             $step = request()->input('step', 1);
 
-            // Create SafeMigrator instance
-            $repository = App::make('migration.repository');
-            $filesystem = App::make('files');
-            $events = App::make('events');
-            $database = App::make('db');
-
-            $safeMigrator = new SafeMigrator($repository, $database, $filesystem, $events);
-            $safeMigrator->setAdapterFactory(App::make(DatabaseAdapterFactoryInterface::class));
+            // Create SafeMigrator instance using factory
+            $safeMigrator = $this->getSafeMigrator();
+            $repository = $safeMigrator->getRepository();
 
             // Get migrations to rollback
             $ran = $repository->getRan();
@@ -455,20 +469,34 @@ class DashboardApiController extends Controller
     }
 
     /**
+     * Get ArtisanRunner instance
+     */
+    protected function getArtisanRunner(): ArtisanRunner
+    {
+        if ($this->artisanRunner) {
+            return $this->artisanRunner;
+        }
+
+        return App::make(ArtisanRunner::class);
+    }
+
+    /**
      * Detect migration conflicts
      */
     public function detectConflicts(): JsonResponse
     {
         try {
-            // Call the conflicts command with JSON output
-            Artisan::call('migrate:conflicts', ['--json' => true]);
+            $runner = $this->getArtisanRunner();
 
-            $output = Artisan::output();
+            // Call the conflicts command with JSON output
+            $runner->call('migrate:conflicts', ['--json' => true]);
+
+            $output = $runner->output();
             $result = json_decode($output, true);
 
             if ($result === null) {
                 // If JSON parsing fails, run without JSON to get conflicts
-                Artisan::call('migrate:conflicts');
+                $runner->call('migrate:conflicts');
 
                 return response()->json([
                     'success' => true,
@@ -496,13 +524,15 @@ class DashboardApiController extends Controller
     public function detectDifferences(): JsonResponse
     {
         try {
+            $runner = $this->getArtisanRunner();
+
             // Run migrate:diff with dry-run to get differences
-            $exitCode = Artisan::call('migrate:diff', [
+            $exitCode = $runner->call('migrate:diff', [
                 '--dry-run' => true,
                 '--force' => true,
             ]);
 
-            $output = Artisan::output();
+            $output = $runner->output();
 
             // Parse differences from output
             $hasDifferences = strpos($output, 'No differences detected') === false &&
@@ -552,6 +582,7 @@ class DashboardApiController extends Controller
     public function generateDiffMigration(): JsonResponse
     {
         try {
+            $runner = $this->getArtisanRunner();
             $name = request()->input('name');
 
             $options = [
@@ -562,8 +593,8 @@ class DashboardApiController extends Controller
                 $options['--name'] = $name;
             }
 
-            $exitCode = Artisan::call('migrate:diff', $options);
-            $output = Artisan::output();
+            $exitCode = $runner->call('migrate:diff', $options);
+            $output = $runner->output();
 
             $success = $exitCode === 0;
 
@@ -594,6 +625,7 @@ class DashboardApiController extends Controller
     public function testMigration(): JsonResponse
     {
         try {
+            $runner = $this->getArtisanRunner();
             $migration = request()->input('migration');
             $withData = request()->input('with_data', false);
             $testRollback = request()->input('test_rollback', true);
@@ -619,8 +651,8 @@ class DashboardApiController extends Controller
             }
 
             // Run the command and capture output
-            $exitCode = Artisan::call('migrate:test', $options);
-            $output = Artisan::output();
+            $exitCode = $runner->call('migrate:test', $options);
+            $output = $runner->output();
 
             $success = $exitCode === 0 && (
                 strpos($output, 'All tests passed') !== false ||
@@ -655,7 +687,7 @@ class DashboardApiController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-                'output' => Artisan::output(),
+                'output' => $runner->output(),
             ], 500);
         }
     }
