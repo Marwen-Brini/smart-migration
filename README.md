@@ -1,17 +1,17 @@
 # 🛡️ Smart Migration Package for Laravel
 
-[![Latest Version](https://img.shields.io/badge/version-v2.0.0--dev-blue?style=flat-square)](https://github.com/marwen-brini/smart-migration)
+[![Latest Version](https://img.shields.io/badge/version-v2.0.0-blue?style=flat-square)](https://github.com/marwen-brini/smart-migration)
 [![PHP Version](https://img.shields.io/badge/php-8.3%20|%208.4-777BB4?style=flat-square&logo=php)](https://github.com/marwen-brini/smart-migration)
 [![Laravel](https://img.shields.io/badge/laravel-11%20|%2012-FF2D20?style=flat-square&logo=laravel)](https://github.com/marwen-brini/smart-migration)
-[![Tests](https://img.shields.io/badge/tests-592%20passing-brightgreen?style=flat-square)](https://github.com/marwen-brini/smart-migration)
+[![Tests](https://img.shields.io/badge/tests-909%20passing-brightgreen?style=flat-square)](https://github.com/marwen-brini/smart-migration)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen?style=flat-square)](https://github.com/marwen-brini/smart-migration)
 [![License](https://img.shields.io/badge/license-MIT-brightgreen?style=flat-square)](LICENSE.md)
 
 **Never fear migrations again!** Smart Migration provides safety, visibility, and confidence when running Laravel migrations. Preview changes before they happen, automatically backup data, and rollback without data loss.
 
-> **🚀 Current Version**: v2.0.0-dev - Now with Web Dashboard! 🎉
+> **🚀 Current Version**: v2.0.0 - Now with Web Dashboard! 🎉
 >
-> Beautiful Vue 3 dashboard for visual migration management, real-time monitoring, and interactive schema exploration.
+> Beautiful Vue 3 dashboard for visual migration management, real-time monitoring, and interactive schema exploration. 909 tests with 100% code coverage.
 
 ## ✨ Features
 
@@ -55,7 +55,7 @@ You can install the package via composer:
 composer require marwen-brini/smart-migration --dev
 ```
 
-> **Note**: v1.0.0 is a stable release, fully tested and ready for production use.
+> **Note**: v2.0.0 is a stable release with 100% test coverage (909 tests), fully tested and ready for production use.
 
 You can publish and run the migrations with:
 
@@ -454,7 +454,7 @@ Please review [our security policy](../../security/policy) on how to report secu
 - [x] Comprehensive test coverage
 - [x] Laravel 11 & 12 compatibility
 
-### ✅ Stable (v1.0.0) - Current Release!
+### ✅ Stable (v1.0.0)
 - [x] `migrate:diff` - Auto-generate migrations from database changes
 - [x] Smart column rename detection (Levenshtein algorithm)
 - [x] Snapshot format versioning
@@ -462,7 +462,7 @@ Please review [our security policy](../../security/policy) on how to report secu
 - [x] 100% test coverage (592 tests)
 - [x] Production-ready stability
 
-### ✅ Dashboard (v2.0.0) - JUST COMPLETED! 🎉
+### ✅ Dashboard (v2.0.0) - Current Release!
 - [x] `migrate:ui` - Web dashboard command
 - [x] Real-time migration status overview
 - [x] Interactive schema explorer with search
@@ -473,6 +473,7 @@ Please review [our security policy](../../security/policy) on how to report secu
 - [x] RESTful API endpoints
 - [x] Auto-refresh functionality
 - [x] Responsive design
+- [x] 100% test coverage (909 tests)
 
 ### 🔮 Future (v2.1+)
 - [ ] WebSocket real-time updates

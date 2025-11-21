@@ -5,9 +5,9 @@ All notable changes to `smart-migration` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.0] - 2025-11-21
 
-### Added (v2.0.0 - Web Dashboard)
+### Added - Web Dashboard
 - **🎉 Full-Featured Web Dashboard**: Complete visual interface for Smart Migration
   - Real-time migration status monitoring
   - Interactive schema explorer
@@ -92,8 +92,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Real-time data fetching with composables
 - Modal-based workflows for complex operations
 - 100% feature parity with CLI commands
+- **100% Test Coverage**: 909 tests with complete code coverage
 
-### Added (v1.1.0 - Missing v1.0 Features)
+### Added - Missing v1.0 Features
 - **`migrate:history` Command**: Visual timeline of all schema changes
   - Shows applied and pending migrations in chronological order
   - Displays batch information and migration metadata
