@@ -1,7 +1,7 @@
 {
     "name": "marwen-brini/smart-migration",
-    "version": "1.0.0",
-    "description": "Production-ready Laravel migrations with auto-diff, drift detection, automatic backups, and safe rollback. 100% test coverage.",
+    "version": "2.0.0",
+    "description": "Production-ready Laravel migrations with web dashboard, auto-diff, drift detection, automatic backups, and safe rollback. 909 tests with 100% coverage.",
     "keywords": [
         "Marwen-Brini",
         "laravel",
@@ -14,6 +14,7 @@
         "auto-diff",
         "drift-detection",
         "schema-snapshots",
+        "dashboard",
         "mysql",
         "postgresql",
         "sqlite"
