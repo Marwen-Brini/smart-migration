@@ -30,6 +30,7 @@ describe('getTables method', function () {
     it('returns tables for SQLite database', function () {
         Config::shouldReceive('get')->byDefault()->andReturn(null);
         Config::shouldReceive('set')->byDefault()->andReturnNull();
+        Config::shouldReceive('offsetGet')->byDefault()->andReturn(null);
         Config::shouldReceive('get')
             ->with('database.connections.testing.driver')
             ->andReturn('sqlite');
@@ -66,6 +67,7 @@ describe('getTables method', function () {
     it('returns tables for MySQL database', function () {
         Config::shouldReceive('get')->byDefault()->andReturn(null);
         Config::shouldReceive('set')->byDefault()->andReturnNull();
+        Config::shouldReceive('offsetGet')->byDefault()->andReturn(null);
         Config::shouldReceive('get')
             ->with('database.connections.testing.driver')
             ->andReturn('mysql');
@@ -105,6 +107,7 @@ describe('getTables method', function () {
     it('returns tables for PostgreSQL database', function () {
         Config::shouldReceive('get')->byDefault()->andReturn(null);
         Config::shouldReceive('set')->byDefault()->andReturnNull();
+        Config::shouldReceive('offsetGet')->byDefault()->andReturn(null);
         Config::shouldReceive('get')
             ->with('database.connections.testing.driver')
             ->andReturn('pgsql');
@@ -142,6 +145,7 @@ describe('getIndexes method', function () {
     it('returns empty array on exception', function () {
         Config::shouldReceive('get')->byDefault()->andReturn(null);
         Config::shouldReceive('set')->byDefault()->andReturnNull();
+        Config::shouldReceive('offsetGet')->byDefault()->andReturn(null);
         Config::shouldReceive('get')
             ->with('database.connections.testing.driver')
             ->andReturn('sqlite');
@@ -166,6 +170,7 @@ describe('getIndexes method', function () {
     it('returns indexes for SQLite database', function () {
         Config::shouldReceive('get')->byDefault()->andReturn(null);
         Config::shouldReceive('set')->byDefault()->andReturnNull();
+        Config::shouldReceive('offsetGet')->byDefault()->andReturn(null);
         Config::shouldReceive('get')
             ->with('database.connections.testing.driver')
             ->andReturn('sqlite');
@@ -200,6 +205,7 @@ describe('getIndexes method', function () {
     it('returns indexes for MySQL database', function () {
         Config::shouldReceive('get')->byDefault()->andReturn(null);
         Config::shouldReceive('set')->byDefault()->andReturnNull();
+        Config::shouldReceive('offsetGet')->byDefault()->andReturn(null);
         Config::shouldReceive('get')
             ->with('database.connections.testing.driver')
             ->andReturn('mysql');
@@ -236,6 +242,7 @@ describe('getIndexes method', function () {
     it('returns indexes for PostgreSQL database', function () {
         Config::shouldReceive('get')->byDefault()->andReturn(null);
         Config::shouldReceive('set')->byDefault()->andReturnNull();
+        Config::shouldReceive('offsetGet')->byDefault()->andReturn(null);
         Config::shouldReceive('get')
             ->with('database.connections.testing.driver')
             ->andReturn('pgsql');
@@ -271,6 +278,7 @@ describe('getIndexes method', function () {
     it('returns empty array for unknown driver', function () {
         Config::shouldReceive('get')->byDefault()->andReturn(null);
         Config::shouldReceive('set')->byDefault()->andReturnNull();
+        Config::shouldReceive('offsetGet')->byDefault()->andReturn(null);
         Config::shouldReceive('get')
             ->with('database.connections.testing.driver')
             ->andReturn('unknown');
@@ -594,6 +602,7 @@ describe('runIntegrityChecks method', function () {
     it('runs integrity checks successfully for SQLite', function () {
         Config::shouldReceive('get')->byDefault()->andReturn(null);
         Config::shouldReceive('set')->byDefault()->andReturnNull();
+        Config::shouldReceive('offsetGet')->byDefault()->andReturn(null);
         Config::shouldReceive('get')
             ->with('database.connections.testing.driver')
             ->andReturn('sqlite');
@@ -624,6 +633,7 @@ describe('runIntegrityChecks method', function () {
     it('runs integrity checks successfully for MySQL', function () {
         Config::shouldReceive('get')->byDefault()->andReturn(null);
         Config::shouldReceive('set')->byDefault()->andReturnNull();
+        Config::shouldReceive('offsetGet')->byDefault()->andReturn(null);
         Config::shouldReceive('get')
             ->with('database.connections.testing.driver')
             ->andReturn('mysql');
@@ -658,6 +668,7 @@ describe('runIntegrityChecks method', function () {
     it('throws exception on database connection error', function () {
         Config::shouldReceive('get')->byDefault()->andReturn(null);
         Config::shouldReceive('set')->byDefault()->andReturnNull();
+        Config::shouldReceive('offsetGet')->byDefault()->andReturn(null);
         Config::shouldReceive('get')
             ->with('database.connections.testing.driver')
             ->andReturn('mysql');
@@ -686,6 +697,7 @@ describe('cleanupTestDatabase method', function () {
     it('handles in-memory SQLite cleanup', function () {
         Config::shouldReceive('get')->byDefault()->andReturn(null);
         Config::shouldReceive('set')->byDefault()->andReturnNull();
+        Config::shouldReceive('offsetGet')->byDefault()->andReturn(null);
         Config::shouldReceive('get')
             ->with('database.connections.testing.driver')
             ->andReturn('sqlite');
