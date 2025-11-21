@@ -3,19 +3,28 @@
 namespace Flux;
 
 use Flux\Cleanup\ArchiveCleanupService;
+use Flux\Commands\BaselineCommand;
 use Flux\Commands\CheckCommand;
 use Flux\Commands\CleanupCommand;
 use Flux\Commands\ConfigCommand;
+use Flux\Commands\ConflictsCommand;
 use Flux\Commands\DiffCommand;
+use Flux\Commands\EmergencyRollbackCommand;
 use Flux\Commands\FluxCommand;
+use Flux\Commands\HistoryCommand;
 use Flux\Commands\PlanCommand;
 use Flux\Commands\SafeCommand;
 use Flux\Commands\SnapshotCommand;
+use Flux\Commands\TestCommand;
 use Flux\Commands\UndoCommand;
+use Flux\Commands\UICommand;
 use Flux\Config\SmartMigrationConfig;
+use Flux\Dashboard\DashboardService;
 use Flux\Database\DatabaseAdapterFactory;
 use Flux\Database\DatabaseAdapterFactoryInterface;
 use Flux\Jobs\ArchiveCleanupJob;
+use Flux\Monitoring\AnomalyDetector;
+use Flux\Monitoring\PerformanceBaseline;
 use Flux\Snapshots\SnapshotManager;
 use Illuminate\Console\Scheduling\Schedule;
 use Spatie\LaravelPackageTools\Package;
@@ -46,6 +55,32 @@ class FluxServiceProvider extends PackageServiceProvider
                 $app->make(DatabaseAdapterFactoryInterface::class)
             );
         });
+
+        // Register ArtisanRunner
+        $this->app->singleton(\Flux\Support\ArtisanRunner::class, \Flux\Support\LaravelArtisanRunner::class);
+
+        // Register DashboardService with dependency injection
+        $this->app->singleton(DashboardService::class, function ($app) {
+            return new DashboardService(
+                $app->make('migrator'),
+                $app->make(DatabaseAdapterFactoryInterface::class),
+                $app->make(SnapshotManager::class),
+                $app->make(\Flux\Generators\SchemaComparator::class),
+                $app->make('db'),
+                $app,
+                $app->make('config'),
+                $app->make(\Flux\Support\ArtisanRunner::class)
+            );
+        });
+
+        // Register performance monitoring services
+        $this->app->singleton(PerformanceBaseline::class);
+
+        $this->app->singleton(AnomalyDetector::class, function ($app) {
+            return new AnomalyDetector(
+                $app->make(PerformanceBaseline::class)
+            );
+        });
     }
 
     /**
@@ -54,6 +89,9 @@ class FluxServiceProvider extends PackageServiceProvider
     public function boot(): void
     {
         parent::boot();
+
+        // Load dashboard routes
+        $this->loadRoutesFrom(__DIR__.'/../routes/dashboard.php');
 
         // Register scheduled cleanup job if auto cleanup is enabled
         // @codeCoverageIgnoreStart
@@ -91,6 +129,12 @@ class FluxServiceProvider extends PackageServiceProvider
             ->hasCommand(CheckCommand::class)
             ->hasCommand(SnapshotCommand::class)
             ->hasCommand(CleanupCommand::class)
-            ->hasCommand(DiffCommand::class);
+            ->hasCommand(DiffCommand::class)
+            ->hasCommand(HistoryCommand::class)
+            ->hasCommand(TestCommand::class)
+            ->hasCommand(ConflictsCommand::class)
+            ->hasCommand(EmergencyRollbackCommand::class)
+            ->hasCommand(BaselineCommand::class)
+            ->hasCommand(UICommand::class);
     }
 }

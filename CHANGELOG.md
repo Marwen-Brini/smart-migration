@@ -5,6 +5,129 @@ All notable changes to `smart-migration` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added (v2.0.0 - Web Dashboard)
+- **🎉 Full-Featured Web Dashboard**: Complete visual interface for Smart Migration
+  - Real-time migration status monitoring
+  - Interactive schema explorer
+  - Performance metrics visualization
+  - Auto-refresh every 30 seconds
+  - Comprehensive export functionality (HTML, CSV, JSON)
+
+- **Migration Preview** (`migrate:plan`):
+  - Preview button on each pending migration
+  - Shows SQL statements, risk assessment, affected tables
+  - Summary cards for safe/warning/dangerous operations
+  - Color-coded operation display
+  - Run migration directly from preview
+  - API: `GET /api/smart-migration/migrations/preview/{migration}`
+
+- **Safe Migration Execution** (`migrate:safe`):
+  - Run Safe button with multi-phase progress modal
+  - Visual progress: preparation → backup → execution → completion
+  - Displays affected tables and data protection warnings
+  - Automatic rollback indication on failure
+  - Shows execution duration
+  - API: `POST /api/smart-migration/migrations/run-safe`
+
+- **Safe Rollback** (`migrate:undo`):
+  - Safe Rollback button with confirmation modal
+  - Explains archive vs drop behavior
+  - Data preservation warnings
+  - Shows rolled back migrations and duration
+  - Clear messaging about data recovery
+  - API: `POST /api/smart-migration/migrations/undo-safe`
+
+- **Conflict Detection View** (`migrate:conflicts`):
+  - Dedicated Conflicts tab
+  - Visual display of conflicts with type and table
+  - Shows affected migrations
+  - Displays suggested resolutions
+  - Color-coded severity
+  - API: `GET /api/smart-migration/migrations/conflicts`
+
+- **Test Migrations Interface** (`migrate:test`):
+  - Test button on each pending migration
+  - Configuration options: test rollback, seed with data
+  - Shows test duration, tables added, full output
+  - Run in production after successful test
+  - Detailed error reporting with recommendations
+  - API: `POST /api/smart-migration/migrations/test`
+
+- **Auto-Diff Generator** (`migrate:diff`):
+  - Dedicated Auto-Diff tab
+  - Detect schema changes between database and migrations
+  - Shows tables added, modified, removed
+  - Custom migration name input
+  - Generate migration file from differences
+  - Displays generated file path
+  - API: `GET /api/smart-migration/migrations/diff`
+  - API: `POST /api/smart-migration/migrations/diff/generate`
+
+- **Dashboard Navigation**:
+  - Overview - Dashboard summary and quick stats
+  - Migrations - Manage and execute migrations
+  - Schema - Explore database structure
+  - Schema Drift - Detect and fix drift
+  - Snapshots - Manage schema snapshots
+  - Metrics - View performance metrics
+  - History - Migration execution timeline
+  - Performance - Performance monitoring
+  - Conflicts - Migration conflict detection
+  - Auto-Diff - Generate migrations from changes
+
+- **Export Functionality**:
+  - Full HTML Report
+  - Migrations CSV export
+  - Schema JSON export
+  - Metrics JSON export
+
+### Technical Improvements
+- Complete Vue 3 dashboard with Composition API
+- Vite dev server with HMR
+- Tailwind CSS styling
+- Toast notifications for user feedback
+- Comprehensive API layer with 15+ endpoints
+- Real-time data fetching with composables
+- Modal-based workflows for complex operations
+- 100% feature parity with CLI commands
+
+### Added (v1.1.0 - Missing v1.0 Features)
+- **`migrate:history` Command**: Visual timeline of all schema changes
+  - Shows applied and pending migrations in chronological order
+  - Displays batch information and migration metadata
+  - Supports `--json` output for programmatic access
+  - Supports `--reverse` to show oldest first
+  - Supports `--limit` to control number of migrations shown
+  - Shows version/tag information from migration docblocks
+
+- **`migrate:test` Command**: Test migrations on temporary database
+  - Tests migrations in isolated environment before production
+  - Automatic test database setup and teardown
+  - Tests both forward migration and rollback
+  - Captures pre/post migration state for comparison
+  - Runs integrity checks and detects schema changes
+  - Supports `--with-data` to seed test database
+  - Supports `--keep` to preserve test database for inspection
+  - Supports `--rollback` to test down() methods
+  - Works with SQLite `:memory:` for fast testing
+
+- **`migrate:conflicts` Command**: Detect migration conflicts
+  - Detects duplicate table creations
+  - Detects modifications before table creation
+  - Detects concurrent modifications to same table
+  - Detects create-after-drop patterns
+  - Provides detailed conflict analysis and recommendations
+  - Supports `--json` output for CI/CD integration
+  - Supports `--auto-resolve` flag (manual resolution still required for most conflicts)
+  - Shows impact and resolution strategies for each conflict type
+
+### Technical Improvements
+- Enhanced service provider with 3 new command registrations
+- Improved migration analysis for conflict detection
+- Better error messages and user guidance for test setup
+
 ## [1.0.0] - 2025-01-29
 
 ### 🎉 Stable Release

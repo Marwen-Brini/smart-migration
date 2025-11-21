@@ -1,0 +1,28 @@
+{
+  "name": "smart-migration-dashboard",
+  "version": "2.0.0",
+  "description": "Web dashboard for Smart Migration Laravel package",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint resources/js --ext .js,.vue --fix"
+  },
+  "dependencies": {
+    "vue": "^3.4.21",
+    "axios": "^1.6.7",
+    "chart.js": "^4.4.1",
+    "vue-chartjs": "^5.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "vite": "^5.1.4",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-vue": "^9.21.1"
+  }
+}

@@ -642,3 +642,108 @@ describe('resolveMigration method', function () {
         })->toThrow(Error::class); // Expected since 'CreateUsersTable' is not a real class
     });
 });
+
+describe('recordPerformance method', function () {
+    it('displays anomaly warnings when anomalies are detected', function () {
+        $mockAnomalyDetector = \Mockery::mock(\Flux\Monitoring\AnomalyDetector::class);
+        $mockPerformanceBaseline = \Mockery::mock(\Flux\Monitoring\PerformanceBaseline::class);
+
+        // Use reflection on the actual SafeMigrator class
+        $reflection = new ReflectionClass(SafeMigrator::class);
+
+        $anomalyDetectorProperty = $reflection->getProperty('anomalyDetector');
+        $anomalyDetectorProperty->setAccessible(true);
+        $anomalyDetectorProperty->setValue($this->migrator, $mockAnomalyDetector);
+
+        $performanceBaselineProperty = $reflection->getProperty('performanceBaseline');
+        $performanceBaselineProperty->setAccessible(true);
+        $performanceBaselineProperty->setValue($this->migrator, $mockPerformanceBaseline);
+
+        // Mock anomaly detection result with anomalies
+        $mockAnomalyDetector->shouldReceive('detect')
+            ->once()
+            ->andReturn([
+                'has_anomalies' => true,
+                'anomalies' => [
+                    ['severity' => 'critical', 'message' => 'Duration exceeds baseline by 300%'],
+                    ['severity' => 'high', 'message' => 'Memory usage exceeds baseline by 200%'],
+                    ['severity' => 'medium', 'message' => 'Query count exceeds baseline by 100%'],
+                    ['severity' => 'low', 'message' => 'Minor deviation detected'],
+                ],
+            ]);
+
+        $mockPerformanceBaseline->shouldReceive('record')->once();
+
+        // Expect warning output for anomalies
+        $this->migrator->shouldReceive('write')
+            ->with(\Mockery::pattern('/Performance anomalies detected/'))
+            ->once();
+
+        // Expect output for each severity level
+        $this->migrator->shouldReceive('write')
+            ->with(\Mockery::pattern('/critical/'))
+            ->once();
+
+        $this->migrator->shouldReceive('write')
+            ->with(\Mockery::pattern('/high/'))
+            ->once();
+
+        $this->migrator->shouldReceive('write')
+            ->with(\Mockery::pattern('/medium/'))
+            ->once();
+
+        $this->migrator->shouldReceive('write')
+            ->with(\Mockery::pattern('/low/'))
+            ->once();
+
+        $method = $reflection->getMethod('recordPerformance');
+        $method->setAccessible(true);
+
+        $metrics = [
+            'duration_ms' => 100.0,
+            'memory_mb' => 10.0,
+            'query_count' => 5,
+        ];
+
+        $method->invoke($this->migrator, 'test_migration', $metrics);
+
+        expect(true)->toBeTrue();
+    });
+
+    it('handles performance tracking exceptions gracefully', function () {
+        $mockAnomalyDetector = \Mockery::mock(\Flux\Monitoring\AnomalyDetector::class);
+
+        // Use reflection on the actual SafeMigrator class
+        $reflection = new ReflectionClass(SafeMigrator::class);
+
+        $anomalyDetectorProperty = $reflection->getProperty('anomalyDetector');
+        $anomalyDetectorProperty->setAccessible(true);
+        $anomalyDetectorProperty->setValue($this->migrator, $mockAnomalyDetector);
+
+        // Mock anomaly detection to throw exception
+        $mockAnomalyDetector->shouldReceive('detect')
+            ->once()
+            ->andThrow(new \Exception('Tracking error'));
+
+        // Set verbose_errors config
+        config(['smart-migration.monitoring.verbose_errors' => true]);
+
+        $this->migrator->shouldReceive('write')
+            ->with(\Mockery::pattern('/Performance tracking error/'))
+            ->once();
+
+        $method = $reflection->getMethod('recordPerformance');
+        $method->setAccessible(true);
+
+        $metrics = [
+            'duration_ms' => 100.0,
+            'memory_mb' => 10.0,
+            'query_count' => 5,
+        ];
+
+        // Should not throw - just log the error
+        $method->invoke($this->migrator, 'test_migration', $metrics);
+
+        expect(true)->toBeTrue();
+    });
+});
